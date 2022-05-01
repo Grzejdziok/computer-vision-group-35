@@ -4,11 +4,14 @@ from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGe
 from data.synthetic_data import SyntheticDataModule
 
 from models.oracle import OracleModel
+from models.VAE import LitVAE
 import matplotlib.pyplot as plt
 import numpy as np
 
 
 if __name__ == "__main__":
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu' 
 
     num_train_samples = 1000
     num_val_samples = 100   
@@ -23,7 +26,7 @@ if __name__ == "__main__":
         synthetic_data_generator=synthetic_data_generator,
         batch_size=batch_size,
     )
-    model = OracleModel()
+    model = LitVAE(latent_dims = 2, s_img=image_size[0], hdim = [100, 50], device=device) #values from DL assignment
 
     trainer = pl.Trainer(max_epochs=1, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)

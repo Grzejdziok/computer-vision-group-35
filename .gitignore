@@ -1,3 +1,5 @@
 lightning_logs
 .idea
 */__pycache__
+.history
+__pycache__

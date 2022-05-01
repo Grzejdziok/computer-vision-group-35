@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 import pytorch_lightning as pl
 
-from data.training_sample import TrainingSample, ModelOutput
+from data.training_sample import TrainingSample, ModelOutput, ModelInput
 
 
 class OracleModel(pl.LightningModule):
@@ -34,6 +34,15 @@ class OracleModel(pl.LightningModule):
         loss = mask_cross_entropy_loss + rgb_mse_loss
         loss.requires_grad = True
         return loss
+
+    def test_step(self, batch: TrainingSample, batch_idx: int) -> Tuple[ModelInput, ModelOutput]:
+        model_inputs = batch["model_input"]
+        model_outputs = self(batch, batch_idx)
+        return model_inputs, model_outputs
+
+    def predict_step(self, batch: TrainingSample, batch_idx: int, dataloader_idx: int = 0) -> Tuple[TrainingSample, ModelOutput]:
+        model_outputs = self(batch, batch_idx)
+        return batch, model_outputs
 
     def configure_optimizers(self) -> None:
         return None

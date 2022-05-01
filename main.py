@@ -1,7 +1,5 @@
-import torch.utils.data
 import pytorch_lightning as pl
 
-from data.list_dataset import ListDataset
 from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGenerator
 from data.synthetic_data import SyntheticDataModule
 
@@ -27,3 +25,4 @@ if __name__ == "__main__":
 
     trainer = pl.Trainer(max_epochs=1, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)
+    predictions_list = trainer.predict(datamodule=datamodule, return_predictions=True)  # this is a list of predictions for each batch in predict_dataloader

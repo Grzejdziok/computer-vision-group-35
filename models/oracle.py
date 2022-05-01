@@ -12,7 +12,7 @@ from data.training_sample import TrainingSample, ModelOutput, ModelInput
 class OracleModel(pl.LightningModule):
     # a dummy predictor which always returns ground-truth data
 
-    def forward(self, batch: TrainingSample, batch_idx: int) -> ModelOutput:
+    def forward(self, batch: TrainingSample) -> ModelOutput:
         model_targets = batch["model_target"]
         model_outputs = ModelOutput(
             rgb_with_object=model_targets["rgb_with_object"].clone(),
@@ -22,7 +22,7 @@ class OracleModel(pl.LightningModule):
 
     def training_step(self, batch: TrainingSample, batch_idx: int) -> nn.Module:
         model_targets = batch["model_target"]
-        model_outputs = self(batch=batch, batch_idx=batch_idx)
+        model_outputs = self(batch=batch)
         mask_cross_entropy_loss = F.binary_cross_entropy(
             input=model_outputs["soft_object_mask"],
             target=model_targets["object_mask"].float(),

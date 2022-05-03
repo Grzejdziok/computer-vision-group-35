@@ -26,9 +26,10 @@ if __name__ == "__main__":
         synthetic_data_generator=synthetic_data_generator,
         batch_size=batch_size,
     )
-    model = LitVAE(latent_dims = 2, s_img=image_size[0], hdim = [100, 50], device=device) #values from DL assignment
+    model = OracleModel()
+    model = LitVAE(latent_dims = 100, s_img=image_size[0], hdim = [100, 100], device=device) #values from DL assignment
 
-    trainer = pl.Trainer(max_epochs=1, accelerator='gpu', devices=1)
+    trainer = pl.Trainer(max_epochs=10, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)
 
     image_index = np.random.randint(10)
@@ -51,3 +52,5 @@ if __name__ == "__main__":
             ax5.imshow(mask_pred[image_index])
             ax5.set_title("Mask - predicted")
     plt.show()
+    plt.savefig("results.png")
+

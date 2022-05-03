@@ -1,10 +1,10 @@
 import torch
 import pytorch_lightning as pl
 
-from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGenerator
+from data.synthetic_data_generator import SyntheticDataGenerator, GaussianNoiseWithSquareSyntheticDataGenerator
 from data.synthetic_data import SyntheticDataModule
-
 from models.vae_end_to_end import VAEEndToEndFullyConnected
+from models.oracle import OracleModel
 import matplotlib.pyplot as plt
 
 
@@ -16,7 +16,8 @@ if __name__ == "__main__":
     square_size = 5
     batch_size = 1000
 
-    synthetic_data_generator = GaussianNoiseWithSquareSyntheticDataGenerator(image_size=image_size, square_size=square_size)
+    # synthetic_data_generator = GaussianNoiseWithSquareSyntheticDataGenerator(image_size=image_size, square_size=square_size)
+    synthetic_data_generator = SyntheticDataGenerator(image_size=image_size, square_size=square_size)
     datamodule = SyntheticDataModule(
         num_train_samples=num_train_samples,
         num_val_samples=num_val_samples,
@@ -27,6 +28,7 @@ if __name__ == "__main__":
 
     latent_dims = image_size[0] * image_size[1] * 3 + 1
     hidden_dims = latent_dims * 2
+    # model = OracleModel()
     model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims])
 
     trainer = pl.Trainer(max_epochs=50, accelerator='gpu', devices=1)

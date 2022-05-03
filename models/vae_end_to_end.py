@@ -10,17 +10,14 @@ from models.vae_utils import EncoderFullyConnected, DecoderFullyConnected
 class VAEEndToEndFullyConnected(pl.LightningModule):
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
         super().__init__()
+        self.latent_dims = latent_dims
         self.encoder = EncoderFullyConnected(latent_dims, s_img, hdim)
         self.decoder = DecoderFullyConnected(latent_dims, s_img, hdim)
 
-    def _encoder_decoder_forward(self, rgb: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
-        z = self.encoder(rgb)
-        image, mask = self.decoder(z, rgb)
-        return image, mask
-
     def forward(self, batch: TrainingSample) -> ModelOutput:
         rgb = batch["model_input"]["rgb"]
-        image, mask_logits = self._encoder_decoder_forward(rgb)
+        z = torch.normal(0., 1., (rgb.shape[0], self.latent_dims))
+        image, mask_logits = self.decoder(z, rgb)
         soft_object_mask = torch.sigmoid(mask_logits).float()
         model_outputs = ModelOutput(rgb_with_object=image, soft_object_mask=soft_object_mask,)
         return model_outputs
@@ -32,7 +29,11 @@ class VAEEndToEndFullyConnected(pl.LightningModule):
     def training_step(self, batch: TrainingSample, batch_idx: int) -> nn.Module:
         rgb = batch["model_input"]["rgb"]
         model_targets = batch["model_target"]
-        image, mask_logits = self._encoder_decoder_forward(rgb=rgb)
+        rgb_with_object = model_targets["rgb_with_object"]
+        object_mask = model_targets["object_mask"].float()
+
+        z = self.encoder(rgb_with_object, object_mask)
+        image, mask_logits = self.decoder(z, rgb)
         mask_cross_entropy_loss = F.binary_cross_entropy_with_logits(
             input=mask_logits,
             target=model_targets["object_mask"].float(),

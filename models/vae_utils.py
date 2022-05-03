@@ -9,7 +9,7 @@ class EncoderFullyConnected(nn.Module):
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
         super(EncoderFullyConnected, self).__init__()
 
-        input_dim = s_img**2*3
+        input_dim = s_img**2*4
         common_layers = [nn.Flatten()]
         for i, h in enumerate(hdim):
             common_layers.append(nn.Linear(hdim[i-1] if i > 0 else input_dim, h))
@@ -29,8 +29,11 @@ class EncoderFullyConnected(nn.Module):
     def reparameterize(self, mu: torch.Tensor, sig: torch.Tensor) -> torch.Tensor:
         return mu + sig*self.N.sample(mu.shape).to(mu.device)
 
-    def forward(self, rgb: torch.Tensor) -> torch.Tensor:
-        features = self.feature_extractor(rgb)
+    def forward(self, rgb_with_object: torch.Tensor, object_mask: torch.Tensor) -> torch.Tensor:
+        rgb_with_object_flat = torch.flatten(rgb_with_object, start_dim=1)
+        object_mask_flat = torch.flatten(object_mask, start_dim=1)
+        encoder_input = torch.concat([rgb_with_object_flat, object_mask_flat], dim=1)
+        features = self.feature_extractor(encoder_input)
         sig = torch.exp(self.sigma_head(features))  # make it stay positive
         mu = self.mean_head(features)
         #reparameterize to find z
@@ -45,7 +48,7 @@ class DecoderFullyConnected(nn.Module):
         super(DecoderFullyConnected, self).__init__()
 
         common_layers = []
-        in_features = latent_dims
+        in_features = latent_dims + s_img**2*3
         for h in hdim[::-1]:
             common_layers.append(nn.Linear(in_features, h))
             common_layers.append(nn.ReLU())
@@ -57,7 +60,8 @@ class DecoderFullyConnected(nn.Module):
         self.s_img = s_img
 
     def forward(self, z: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        features = self.feature_extractor(z)
+        rgb_flat = torch.flatten(rgb, start_dim=1)
+        features = self.feature_extractor(torch.concat([z, rgb_flat], dim=1))
         mask_logits = self.mask_head(features).view(-1, self.s_img, self.s_img)
         masks = torch.sigmoid(mask_logits).unsqueeze(3)
         image = self.image_head(features).view(-1, self.s_img, self.s_img, 3) * masks + rgb * (1.-masks)

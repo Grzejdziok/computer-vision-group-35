@@ -25,11 +25,11 @@ if __name__ == "__main__":
     )
     datamodule.prepare_data()
 
-    latent_dims = 128
+    latent_dims = 256
     hidden_dims = 1024
-    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims])
+    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims])
 
-    trainer = pl.Trainer(max_epochs=100, accelerator='gpu', devices=1)
+    trainer = pl.Trainer(max_epochs=60, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)
 
     for batch in datamodule.predict_dataloader():

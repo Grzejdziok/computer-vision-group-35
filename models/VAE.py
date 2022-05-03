@@ -1,3 +1,4 @@
+from statistics import mode
 import torch
 from torch import nn
 import pytorch_lightning as pl
@@ -9,14 +10,14 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         
         self.mean_layers = nn.Sequential(
-            nn.Linear(s_img*s_img, hdim[0]),
+            nn.Linear(s_img*s_img*3, hdim[0]),
             nn.ReLU(),
             nn.Linear(hdim[0], hdim[1]),
             nn.ReLU(),
             nn.Linear(hdim[1], latent_dims)
         )
         self.sigma_layers = nn.Sequential(
-            nn.Linear(s_img*s_img, hdim[0]),
+            nn.Linear(s_img*s_img*3, hdim[0]),
             nn.ReLU(),
             nn.Linear(hdim[0], hdim[1]),
             nn.ReLU(),
@@ -41,7 +42,7 @@ class Encoder(nn.Module):
 
         sig = self.sigma_layers(x)
         sig = torch.exp(sig) #because it has to stay positive
-        mu = self.mean_layers(batch)
+        mu = self.mean_layers(x)
         
         #reparameterize to find z
         z = self.reparameterize(mu, sig)
@@ -61,8 +62,7 @@ class Decoder(nn.Module):
             nn.ReLU(),
             nn.Linear(hdim[1], hdim[0]),
             nn.ReLU(),
-            nn.Linear(hdim[0], s_img*s_img),
-            nn.Sigmoid()
+            nn.Linear(hdim[0], s_img*s_img*3),
         )
         self.mask_layers = nn.Sequential(
             nn.Linear(latent_dims, hdim[1]),
@@ -70,15 +70,14 @@ class Decoder(nn.Module):
             nn.Linear(hdim[1], hdim[0]),
             nn.ReLU(),
             nn.Linear(hdim[0], s_img*s_img),
-            nn.Sigmoid()
         )
 
     def forward(self, z:torch.Tensor)-> torch.Tensor:
     
         image = self.image_layers(z)
-        image = image.reshape((-1, 1, self.s_img, self.s_img))
+        image = image.reshape((-1, self.s_img, self.s_img, 3))
         mask = self.mask_layers(z)
-        mask = mask.reshape((-1, 1, self.s_img, self.s_img))
+        mask = mask.reshape((-1, self.s_img, self.s_img))
 
         return image, mask
 
@@ -91,7 +90,11 @@ class LitVAE(pl.LightningModule):
     def forward(self, batch: TrainingSample) -> ModelOutput:
         z = self.encoder(batch)
         image, mask = self.decoder(z)
-        return image, mask
+        model_outputs = ModelOutput(
+            rgb_with_object=image,
+            soft_object_mask=mask,
+        )
+        return model_outputs
 
     def configure_optimizers(self) -> None:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -99,17 +102,20 @@ class LitVAE(pl.LightningModule):
 
     def training_step(self, batch: TrainingSample, batch_idx: int) -> nn.Module:
         model_targets = batch["model_target"]
-        image, mask = self(batch=batch)
-        mask_cross_entropy_loss = F.binary_cross_entropy(
+        model_outputs = self(batch=batch)
+        image = model_outputs['rgb_with_object']
+        mask = model_outputs['soft_object_mask']
+
+        mask_cross_entropy_loss = F.binary_cross_entropy_with_logits(
             input=mask,
-            target=model_targets["object_mask"].float(),
+            target=model_targets["object_mask"].float()
         )
         rgb_mse_loss = F.mse_loss(
             input=image,
             target=model_targets["rgb_with_object"],
         )
-        loss = mask_cross_entropy_loss + rgb_mse_loss + Encoder.kl
-        loss.requires_grad = True
+        loss = mask_cross_entropy_loss + rgb_mse_loss + self.encoder.kl*0.1
+        # print(f"mask_cross_entropy_loss {mask_cross_entropy_loss}, rgb_mse_loss {rgb_mse_loss}, self.encoder.kl: {self.encoder.kl}")
         return loss
 
 

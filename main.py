@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    num_train_samples = 200000
+    num_train_samples = 100000
     num_val_samples = 1000
-    image_size = (10, 10)
-    square_size = 5
+    image_size = (16, 16)
+    square_size = 7
     batch_size = 1000
 
     synthetic_data_generator = GaussianNoiseWithSquareSyntheticDataGenerator(image_size=image_size, square_size=square_size)
@@ -25,11 +25,11 @@ if __name__ == "__main__":
     )
     datamodule.prepare_data()
 
-    latent_dims = image_size[0] * image_size[1] * 3 + 1
-    hidden_dims = latent_dims * 2
-    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims])
+    latent_dims = 128
+    hidden_dims = 1024
+    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims])
 
-    trainer = pl.Trainer(max_epochs=50, accelerator='gpu', devices=1)
+    trainer = pl.Trainer(max_epochs=100, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)
 
     for batch in datamodule.predict_dataloader():
@@ -66,6 +66,6 @@ if __name__ == "__main__":
                 ax4.set_title("RGB - predicted")
                 ax5.set_title("Mask - predicted")
         break
-    plt.show()
     plt.savefig("results.png")
+    plt.show()
 

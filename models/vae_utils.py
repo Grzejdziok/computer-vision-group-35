@@ -5,6 +5,7 @@ import torch.nn as nn
 
 
 class EncoderFullyConnected(nn.Module):
+
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
         super(EncoderFullyConnected, self).__init__()
 
@@ -23,7 +24,7 @@ class EncoderFullyConnected(nn.Module):
         self.kl = 0
 
     def kull_leib(self, mu: torch.Tensor, sig: torch.Tensor) -> torch.Tensor:
-        return torch.distributions.kl.kl_divergence(torch.distributions.Normal(mu, sig), self.N)[:, 0].sum()
+        return torch.distributions.kl.kl_divergence(torch.distributions.Normal(mu, sig), self.N).mean()
 
     def reparameterize(self, mu: torch.Tensor, sig: torch.Tensor) -> torch.Tensor:
         return mu + sig*self.N.sample(mu.shape).to(mu.device)
@@ -44,17 +45,20 @@ class DecoderFullyConnected(nn.Module):
         super(DecoderFullyConnected, self).__init__()
 
         common_layers = []
-        for i, h in enumerate(hdim[::-1]):
-            common_layers.append(nn.Linear(hdim[-i+1] if i > 0 else latent_dims, h))
+        in_features = latent_dims
+        for h in hdim[::-1]:
+            common_layers.append(nn.Linear(in_features, h))
             common_layers.append(nn.ReLU())
+            in_features = h
 
         self.feature_extractor = nn.Sequential(*common_layers)
-        self.image_head = nn.Linear(hdim[0], s_img**2*3)
-        self.mask_head = nn.Linear(hdim[0], s_img**2)
+        self.image_head = nn.Linear(in_features, s_img**2*3)
+        self.mask_head = nn.Linear(in_features, s_img**2)
         self.s_img = s_img
 
-    def forward(self, z: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, z: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         features = self.feature_extractor(z)
-        image = self.image_head(features).view(-1, self.s_img, self.s_img, 3)
-        mask = self.mask_head(features).view(-1, self.s_img, self.s_img)
-        return image, mask
+        mask_logits = self.mask_head(features).view(-1, self.s_img, self.s_img)
+        masks = torch.sigmoid(mask_logits).unsqueeze(3)
+        image = self.image_head(features).view(-1, self.s_img, self.s_img, 3) * masks + rgb * (1.-masks)
+        return image, mask_logits

@@ -15,7 +15,7 @@ class VAEEndToEndFullyConnected(pl.LightningModule):
 
     def _encoder_decoder_forward(self, rgb: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         z = self.encoder(rgb)
-        image, mask = self.decoder(z)
+        image, mask = self.decoder(z, rgb)
         return image, mask
 
     def forward(self, batch: TrainingSample) -> ModelOutput:
@@ -37,19 +37,19 @@ class VAEEndToEndFullyConnected(pl.LightningModule):
             input=mask_logits,
             target=model_targets["object_mask"].float(),
         )
-        reconstruction_rgb_mse_loss = F.mse_loss(
+        background_rgb_mse_loss = F.mse_loss(
             input=image,
             target=model_targets["rgb_with_object"],
         )
-        rgb_similarity_idxs = torch.sigmoid(mask_logits.detach()) < 0.5
-        mask_rgb_consistency_rgb_mse_loss = F.mse_loss(
-            input=image[rgb_similarity_idxs],
-            target=rgb[rgb_similarity_idxs],
+        object_rgb_mse_loss = F.mse_loss(
+            input=image[model_targets["object_mask"]],
+            target=model_targets["rgb_with_object"][model_targets["object_mask"]],
         )
 
-        loss = mask_cross_entropy_loss + reconstruction_rgb_mse_loss + mask_rgb_consistency_rgb_mse_loss + self.encoder.kl
+        loss = mask_cross_entropy_loss + self.encoder.kl + object_rgb_mse_loss + background_rgb_mse_loss
         self.log("ce_loss", mask_cross_entropy_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-        self.log("reconstruction_mse", reconstruction_rgb_mse_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-        self.log("consistency_mse", mask_rgb_consistency_rgb_mse_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log("background_mse", background_rgb_mse_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log("object_mse", object_rgb_mse_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         self.log("vae_kl_loss", self.encoder.kl, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         return loss
+

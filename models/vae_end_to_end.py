@@ -4,14 +4,14 @@ from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from data.training_sample import TrainingSample, ModelOutput
-from models.vae_utils import Encoder, Decoder
+from models.vae_utils import EncoderFullyConnected, DecoderFullyConnected
 
 
-class VAEEndToEnd(pl.LightningModule):
+class VAEEndToEndFullyConnected(pl.LightningModule):
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
         super().__init__()
-        self.encoder = Encoder(latent_dims, s_img, hdim)
-        self.decoder = Decoder(latent_dims, s_img, hdim)
+        self.encoder = EncoderFullyConnected(latent_dims, s_img, hdim)
+        self.decoder = DecoderFullyConnected(latent_dims, s_img, hdim)
 
     def _encoder_decoder_forward(self, rgb: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         z = self.encoder(rgb)

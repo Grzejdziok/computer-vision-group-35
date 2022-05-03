@@ -4,13 +4,13 @@ import pytorch_lightning as pl
 from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGenerator
 from data.synthetic_data import SyntheticDataModule
 
-from models.vae_end_to_end import VAEEndToEnd
+from models.vae_end_to_end import VAEEndToEndFullyConnected
 import matplotlib.pyplot as plt
 
 
 if __name__ == "__main__":
 
-    num_train_samples = 100000
+    num_train_samples = 200000
     num_val_samples = 1000
     image_size = (10, 10)
     square_size = 5
@@ -27,9 +27,9 @@ if __name__ == "__main__":
 
     latent_dims = image_size[0] * image_size[1] * 3 + 1
     hidden_dims = latent_dims * 2
-    model = VAEEndToEnd(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims])
+    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims])
 
-    trainer = pl.Trainer(max_epochs=100, accelerator='gpu', devices=1)
+    trainer = pl.Trainer(max_epochs=50, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)
 
     for batch in datamodule.predict_dataloader():

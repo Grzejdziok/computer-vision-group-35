@@ -115,6 +115,9 @@ class LitVAE(pl.LightningModule):
             target=model_targets["rgb_with_object"],
         )
         loss = mask_cross_entropy_loss + rgb_mse_loss + self.encoder.kl*0.1
+        self.log("ce_loss", mask_cross_entropy_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("mse_loss", rgb_mse_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("kl_loss", self.encoder.kl*0.1, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         # print(f"mask_cross_entropy_loss {mask_cross_entropy_loss}, rgb_mse_loss {rgb_mse_loss}, self.encoder.kl: {self.encoder.kl}")
         return loss
 

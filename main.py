@@ -11,8 +11,6 @@ import numpy as np
 
 if __name__ == "__main__":
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu' 
-
     num_train_samples = 1000
     num_val_samples = 100   
     image_size = (10, 10)
@@ -27,7 +25,7 @@ if __name__ == "__main__":
         batch_size=batch_size,
     )
     model = OracleModel()
-    model = LitVAE(latent_dims = 100, s_img=image_size[0], hdim = [100, 100], device=device) #values from DL assignment
+    model = LitVAE(latent_dims = 100, s_img=image_size[0], hdim = [100, 100]) #values from DL assignment
 
     trainer = pl.Trainer(max_epochs=10, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)
@@ -39,7 +37,7 @@ if __name__ == "__main__":
         mask_gt = outputs[1]["model_target"]["object_mask"]
         rgb_pred = outputs[0]['rgb_with_object']
         mask_pred = outputs[0]['soft_object_mask']
-        if batch==0:
+        if batch == 0:
             fig, ((ax1, ax2, ax3, ax4, ax5)) = plt.subplots(nrows=1, ncols=5, sharex=False, sharey=False)
             ax1.imshow(rgb_gt[image_index])
             ax1.set_title("RGB - input")
@@ -51,6 +49,7 @@ if __name__ == "__main__":
             ax4.set_title("RGB - predicted")
             ax5.imshow(mask_pred[image_index])
             ax5.set_title("Mask - predicted")
+            break
     plt.show()
     plt.savefig("results.png")
 

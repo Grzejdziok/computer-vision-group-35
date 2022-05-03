@@ -1,12 +1,14 @@
 from statistics import mode
+from typing import Tuple
 import torch
 from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from data.training_sample import TrainingSample, ModelOutput
 
+
 class Encoder(nn.Module):
-    def __init__(self, latent_dims, s_img, hdim, device):
+    def __init__(self, latent_dims: int, s_img: int, hdim: Tuple[int, int]):
         super(Encoder, self).__init__()
         
         self.mean_layers = nn.Sequential(
@@ -26,19 +28,17 @@ class Encoder(nn.Module):
 
         #distribution setup
         self.N = torch.distributions.Normal(0, 1)
-        self.N.loc = self.N.loc.to(device) # hack to get sampling on the GPU
-        self.N.scale = self.N.scale.to(device)
         self.kl = 0
 
-    def kull_leib(self, mu, sigma):
+    def kull_leib(self, mu: torch.Tensor, sigma: torch.Tensor) -> torch.Tensor:
         return (sigma**2 + mu**2 - torch.log(sigma) - 1/2).sum()
 
-    def reparameterize(self, mu, sig):
-        return mu + sig*self.N.sample(mu.shape)
+    def reparameterize(self, mu: torch.Tensor, sig: torch.Tensor) -> torch.Tensor:
+        return mu + sig*self.N.sample(mu.shape).to(mu.device)
 
-    def forward(self, batch:torch.Tensor)-> torch.Tensor:
+    def forward(self, rgb: torch.Tensor) -> torch.Tensor:
 
-        x = batch["model_input"]['rgb'].flatten(start_dim=1)
+        x = rgb.flatten(start_dim=1)
 
         sig = self.sigma_layers(x)
         sig = torch.exp(sig) #because it has to stay positive
@@ -52,8 +52,9 @@ class Encoder(nn.Module):
 
         return z
 
+
 class Decoder(nn.Module):
-    def __init__(self, latent_dims, s_img, hdim, device):
+    def __init__(self, latent_dims: int, s_img: int, hdim: Tuple[int, int]):
         super(Decoder, self).__init__()
         
         self.s_img=s_img
@@ -72,7 +73,7 @@ class Decoder(nn.Module):
             nn.Linear(hdim[0], s_img*s_img),
         )
 
-    def forward(self, z:torch.Tensor)-> torch.Tensor:
+    def forward(self, z: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     
         image = self.image_layers(z)
         image = image.reshape((-1, self.s_img, self.s_img, 3))
@@ -81,31 +82,32 @@ class Decoder(nn.Module):
 
         return image, mask
 
+
 class LitVAE(pl.LightningModule):
-    def __init__(self, latent_dims, s_img, hdim, device):
+    def __init__(self, latent_dims, s_img, hdim):
         super().__init__()
-        self.encoder = Encoder(latent_dims, s_img, hdim, device)
-        self.decoder = Decoder(latent_dims, s_img, hdim, device)
+        self.encoder = Encoder(latent_dims, s_img, hdim)
+        self.decoder = Decoder(latent_dims, s_img, hdim)
+
+    def _encoder_decoder_forward(self, rgb: torch.FloatTensor) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+        z = self.encoder(rgb)
+        image, mask = self.decoder(z)
+        return image, mask
 
     def forward(self, batch: TrainingSample) -> ModelOutput:
-        z = self.encoder(batch)
-        image, mask = self.decoder(z)
-        model_outputs = ModelOutput(
-            rgb_with_object=image,
-            soft_object_mask=mask,
-        )
+        rgb = batch["model_input"]["rgb"]
+        image, mask = self._encoder_decoder_forward(rgb)
+        model_outputs = ModelOutput(rgb_with_object=image, soft_object_mask=torch.sigmoid(mask).float(),)
         return model_outputs
 
-    def configure_optimizers(self) -> None:
+    def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
 
     def training_step(self, batch: TrainingSample, batch_idx: int) -> nn.Module:
+        rgb = batch["model_input"]["rgb"]
         model_targets = batch["model_target"]
-        model_outputs = self(batch=batch)
-        image = model_outputs['rgb_with_object']
-        mask = model_outputs['soft_object_mask']
-
+        image, mask = self._encoder_decoder_forward(rgb=rgb)
         mask_cross_entropy_loss = F.binary_cross_entropy_with_logits(
             input=mask,
             target=model_targets["object_mask"].float()
@@ -118,7 +120,4 @@ class LitVAE(pl.LightningModule):
         self.log("ce_loss", mask_cross_entropy_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log("mse_loss", rgb_mse_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log("kl_loss", self.encoder.kl*0.1, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        # print(f"mask_cross_entropy_loss {mask_cross_entropy_loss}, rgb_mse_loss {rgb_mse_loss}, self.encoder.kl: {self.encoder.kl}")
         return loss
-
-

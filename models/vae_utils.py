@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 
 
-class Encoder(nn.Module):
+class EncoderFullyConnected(nn.Module):
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
-        super(Encoder, self).__init__()
+        super(EncoderFullyConnected, self).__init__()
 
         input_dim = s_img**2*3
         common_layers = [nn.Flatten()]
@@ -39,9 +39,9 @@ class Encoder(nn.Module):
         return z
 
 
-class Decoder(nn.Module):
+class DecoderFullyConnected(nn.Module):
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
-        super(Decoder, self).__init__()
+        super(DecoderFullyConnected, self).__init__()
 
         common_layers = []
         for i, h in enumerate(hdim[::-1]):

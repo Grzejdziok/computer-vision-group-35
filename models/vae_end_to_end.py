@@ -8,9 +8,11 @@ from models.vae_utils import EncoderFullyConnected, DecoderFullyConnected
 
 
 class VAEEndToEndFullyConnected(pl.LightningModule):
-    def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
+    def __init__(self, latent_dims: int, s_img: int, hdim: List[int], lr: float, betas:tuple):
         super().__init__()
         self.latent_dims = latent_dims
+        self.lr = lr
+        self.betas=betas
         self.encoder = EncoderFullyConnected(latent_dims, s_img, hdim)
         self.decoder = DecoderFullyConnected(latent_dims, s_img, hdim)
 
@@ -23,7 +25,7 @@ class VAEEndToEndFullyConnected(pl.LightningModule):
         return model_outputs
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
         return optimizer
 
     def training_step(self, batch: TrainingSample, batch_idx: int) -> nn.Module:

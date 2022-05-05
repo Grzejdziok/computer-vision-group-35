@@ -3,32 +3,49 @@ import pytorch_lightning as pl
 
 from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGenerator
 from data.synthetic_data import SyntheticDataModule
+from data.real_data_generator import RealDataGenerator
+from data.real_data import RealDataModule
 
 from models.vae_end_to_end import VAEEndToEndFullyConnected
+from models.gan_end_to_end import GANEndToEnd
 import matplotlib.pyplot as plt
+
+from data.CVAT_reader import create_masks
 
 
 if __name__ == "__main__":
-
+    create_masks()
     num_train_samples = 100000
-    num_val_samples = 1000
+    num_val_samples = 100
     image_size = (16, 16)
     square_size = 7
     batch_size = 1000
 
-    synthetic_data_generator = GaussianNoiseWithSquareSyntheticDataGenerator(image_size=image_size, square_size=square_size)
-    datamodule = SyntheticDataModule(
+    # synthetic_data_generator = GaussianNoiseWithSquareSyntheticDataGenerator(image_size=image_size, square_size=square_size)
+    # datamodule = SyntheticDataModule(
+    #     num_train_samples=num_train_samples,
+    #     num_val_samples=num_val_samples,
+    #     synthetic_data_generator=synthetic_data_generator,
+    #     batch_size=batch_size,
+    # )
+    real_data_generator = RealDataGenerator()
+    datamodule = RealDataModule(
         num_train_samples=num_train_samples,
         num_val_samples=num_val_samples,
-        synthetic_data_generator=synthetic_data_generator,
+        real_data_generator=real_data_generator,
         batch_size=batch_size,
+        resize=True,
+        resize_dims=image_size
     )
     datamodule.prepare_data()
 
     latent_dims = 256
     hidden_dims = 1024
-    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims])
-
+    lr = 1e-3
+    betas = (0.5, 0.999) # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims], lr=lr, betas=betas)
+    # model = GANEndToEnd(width=image_size[0], height=image_size[1], latent_dim=latent_dims, hidden_dim=hidden_dims, lr=lr, betas=betas, batch_size=batch_size)
+    
     trainer = pl.Trainer(max_epochs=60, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)
 

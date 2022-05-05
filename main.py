@@ -1,5 +1,6 @@
 import torch
 import pytorch_lightning as pl
+import os
 
 from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGenerator
 from data.synthetic_data import SyntheticDataModule
@@ -14,7 +15,10 @@ from data.CVAT_reader import create_masks
 
 
 if __name__ == "__main__":
-    create_masks()
+    
+    rerun=False
+    if not os.path.exists("masks") or rerun:
+        create_masks()
     num_train_samples = 100000
     num_val_samples = 100
     image_size = (16, 16)

@@ -32,7 +32,7 @@ class RealDataGenerator(ABC):
                                 rgb = cv2.resize(rgb, resize_dims)
                             break
                     for mask_file in os.listdir(mask_folder):
-                        mask = cv2.imread(os.path.join(mask_folder, mask_file))
+                        mask = cv2.imread(os.path.join(mask_folder, mask_file), cv2.IMREAD_GRAYSCALE)
                         if resize:
                             mask = cv2.resize(mask, resize_dims)
                         if not np.all((mask == 0)):

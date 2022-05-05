@@ -4,3 +4,5 @@ lightning_logs
 .history
 __pycache__
 results.png
+images/
+masks/

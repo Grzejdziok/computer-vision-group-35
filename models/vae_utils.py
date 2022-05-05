@@ -64,4 +64,5 @@ class DecoderFullyConnected(nn.Module):
         mask_logits = self.mask_head(features).view(-1, self.s_img, self.s_img)
         masks = torch.sigmoid(mask_logits).unsqueeze(3)
         image = self.image_head(features).view(-1, self.s_img, self.s_img, 3) * masks + rgb * (1.-masks)
+
         return image, mask_logits

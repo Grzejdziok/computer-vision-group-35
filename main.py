@@ -47,8 +47,8 @@ if __name__ == "__main__":
     hidden_dims = 1024
     lr = 1e-3
     betas = (0.5, 0.999) # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
-    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims], lr=lr, betas=betas)
-    # model = GANEndToEnd(width=image_size[0], height=image_size[1], latent_dim=latent_dims, hidden_dim=hidden_dims, lr=lr, betas=betas, batch_size=batch_size)
+    # model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims], lr=lr, betas=betas)
+    model = GANEndToEnd(width=image_size[0], height=image_size[1], latent_dim=latent_dims, hidden_dim=hidden_dims, lr=lr, betas=betas, batch_size=batch_size)
     
     trainer = pl.Trainer(max_epochs=60, accelerator='gpu', devices=1)
     trainer.fit(model=model, datamodule=datamodule)

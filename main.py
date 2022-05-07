@@ -11,19 +11,24 @@ from models.vae_end_to_end import VAEEndToEndFullyConnected
 from models.gan_end_to_end import GANEndToEnd
 import matplotlib.pyplot as plt
 
-from data.CVAT_reader import create_masks
+from data.CVAT_reader import create_masks, create_images_1
 
 
 if __name__ == "__main__":
     
-    rerun=False
-    if not os.path.exists("masks") or rerun:
-        create_masks()
     num_train_samples = 100000
     num_val_samples = 100
-    image_size = (16, 16)
+    image_size = (64, 64)
     square_size = 7
     batch_size = 1000
+    rerun=True
+    if not os.path.exists("masks") or rerun:
+        masks_dir = "masks"
+        image_dir = "images"
+        cvat_xml = "images/annotations.xml"
+        image_1_dir = "images_1"
+        create_masks(masks_dir, image_dir, cvat_xml)
+        create_images_1(masks_dir, image_dir, image_1_dir, image_size)
 
     # synthetic_data_generator = GaussianNoiseWithSquareSyntheticDataGenerator(image_size=image_size, square_size=square_size)
     # datamodule = SyntheticDataModule(

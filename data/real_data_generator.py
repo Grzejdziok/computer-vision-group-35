@@ -17,7 +17,7 @@ class RealDataGenerator(ABC):
         """If resize, resize_dims must be provided"""
         training_samples = []
         masks_dir = "masks"
-        image_dir = "images"
+        image_dir = "images_1"
         # print(os.walk(image_dir))
         for root, dirs, files in os.walk(image_dir, topdown=True):
             for box in dirs:
@@ -55,16 +55,4 @@ class RealDataGenerator(ABC):
                                 )
                             )
                             training_samples.append(training_sample)
-        return training_samples
-
-                        
-
-
-
-
-
-
-
-
-
         return training_samples

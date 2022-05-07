@@ -64,20 +64,15 @@ def create_masks(masks_dir:str, image_dir:str, cvat_xml:str, scale_factor:float 
     for root, dirs, files in os.walk(image_dir, topdown=True):    
         for image in files:
             if ".png" in image:
-                parent, folder, name = os.path.join(root, image).split("/")
-                img_list.append(os.path.join(folder, name))
+                folder = os.path.split(root)[-1]
+                img_list.append(os.path.join(folder, image))
                 dir_create(os.path.join(masks_dir, folder))
     for img in tqdm(img_list, desc='Writing masks'):
         img_path = os.path.join(image_dir, img)
-        anno = parse_anno_file(cvat_xml, img)
-        background = []
-        is_first_image = True
+        anno = parse_anno_file(cvat_xml, os.path.basename(img))
+        current_image = cv2.imread(img_path)
+        height, width, _ = current_image.shape
         for image in anno:
-            if is_first_image:
-                current_image = cv2.imread(img_path)
-                height, width, _ = current_image.shape
-                background = np.zeros((height, width, 3), np.uint8)
-                is_first_image = False
             output_path = os.path.join(masks_dir, img)
             background = create_mask_file(width,
                                           height,
@@ -85,8 +80,9 @@ def create_masks(masks_dir:str, image_dir:str, cvat_xml:str, scale_factor:float 
                                           scale_factor)
             background = Image.fromarray(background)
             background.save(output_path)
-    
-def create_images_1(masks_dir:str, image_dir:str, image_1_dir:str, image_size:Tuple[int,int]):
+
+
+def create_images_1(masks_dir: str, image_dir: str, image_1_dir: str, image_size: Tuple[int,int]):
     dir_create(image_1_dir)
     for root, dirs, files in os.walk(image_dir, topdown=True):
         for box in dirs:

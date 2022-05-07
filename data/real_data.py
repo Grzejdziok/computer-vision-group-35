@@ -25,7 +25,6 @@ class RealDataModule(pl.LightningDataModule):
         self.resize = resize
         self.resize_dims = resize_dims
 
-
     def prepare_data(self):
         self.train_set = ListDataset(self._real_data_generator.generate(self._num_train_samples, resize=self.resize, resize_dims=self.resize_dims))
         self.val_set = ListDataset(self._real_data_generator.generate(self._num_val_samples, resize=self.resize, resize_dims=self.resize_dims))
@@ -40,6 +39,6 @@ class RealDataModule(pl.LightningDataModule):
         return DataLoader(self.val_set, batch_size=self._batch_size, shuffle=False)
 
     def predict_dataloader(self):
-        return DataLoader(self.val_set, batch_size=self._batch_size, shuffle=False)
+        return DataLoader(self.val_set, batch_size=self._batch_size, shuffle=True)
 
 

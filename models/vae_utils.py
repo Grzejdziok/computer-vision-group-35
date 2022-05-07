@@ -30,7 +30,7 @@ class EncoderFullyConnected(nn.Module):
 
     def forward(self, rgb_with_object: torch.Tensor, object_mask: torch.Tensor) -> torch.Tensor:
         rgb_with_object_flat = torch.flatten(rgb_with_object, start_dim=1)
-        object_mask_flat = torch.flatten(object_mask, start_dim=1)
+        object_mask_flat = torch.flatten(object_mask.float(), start_dim=1)
         encoder_input = torch.concat([rgb_with_object_flat, object_mask_flat], dim=1)
         features = self.feature_extractor(encoder_input)
         sig = torch.exp(self.sigma_head(features))  # make it stay positive
@@ -58,11 +58,11 @@ class DecoderFullyConnected(nn.Module):
         self.mask_head = nn.Linear(in_features, s_img**2)
         self.s_img = s_img
 
-    def forward(self, z: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        rgb_flat = torch.flatten(rgb, start_dim=1)
-        features = self.feature_extractor(torch.concat([z, rgb_flat], dim=1))
+    def forward(self, z: torch.Tensor, normalized_rgb: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        normalized_rgb_flat = torch.flatten(normalized_rgb, start_dim=1)
+        features = self.feature_extractor(torch.concat([z, normalized_rgb_flat], dim=1))
         mask_logits = self.mask_head(features).view(-1, self.s_img, self.s_img)
-        masks = torch.sigmoid(mask_logits).unsqueeze(3)
-        image = self.image_head(features).view(-1, self.s_img, self.s_img, 3) * masks + rgb * (1.-masks)
+        masks = torch.sigmoid(mask_logits).unsqueeze(1).detach()
+        image = self.image_head(features).view(-1, 3, self.s_img, self.s_img) * masks + rgb * (1.-masks)
 
         return image, mask_logits

@@ -1,5 +1,7 @@
 from typing import Tuple, List
 import torch
+import torchvision
+import torchvision.transforms.functional as TF
 from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
@@ -15,11 +17,13 @@ class VAEEndToEndFullyConnected(pl.LightningModule):
         self.betas=betas
         self.encoder = EncoderFullyConnected(latent_dims, s_img, hdim)
         self.decoder = DecoderFullyConnected(latent_dims, s_img, hdim)
+        self.preprocess_transform = torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 
     def forward(self, batch: TrainingSample) -> ModelOutput:
         rgb = batch["model_input"]["rgb"]
         z = torch.normal(0., 1., (rgb.shape[0], self.latent_dims))
-        image, mask_logits = self.decoder(z, rgb)
+        normalized_rgb = self.preprocess_transform(rgb)
+        image, mask_logits = self.decoder(z, normalized_rgb, rgb)
         soft_object_mask = torch.sigmoid(mask_logits).float()
         model_outputs = ModelOutput(rgb_with_object=image, soft_object_mask=soft_object_mask,)
         return model_outputs
@@ -32,24 +36,39 @@ class VAEEndToEndFullyConnected(pl.LightningModule):
         rgb = batch["model_input"]["rgb"]
         model_targets = batch["model_target"]
         rgb_with_object = model_targets["rgb_with_object"]
-        object_mask = model_targets["object_mask"].float()
+        object_mask = model_targets["object_mask"]
 
-        z = self.encoder(rgb_with_object, object_mask)
-        image, mask_logits = self.decoder(z, rgb)
+        for i in range(rgb.shape[0]):
+            if torch.rand(1) < 0.5:
+                rgb[i] = TF.hflip(rgb[i])
+                rgb_with_object[i] = TF.hflip(rgb_with_object[i])
+                object_mask[i] = TF.hflip(object_mask[i])
+            if torch.rand(1) < 0.5:
+                rgb[i] = TF.vflip(rgb[i])
+                rgb_with_object[i] = TF.vflip(rgb_with_object[i])
+                object_mask[i] = TF.vflip(object_mask[i])
+
+        preprocessed_rgb_with_object = self.preprocess_transform(rgb_with_object)
+        z = self.encoder(preprocessed_rgb_with_object, object_mask)
+
+        preprocessed_rgb = self.preprocess_transform(rgb)
+        predicted_rgb_with_object, predicted_object_mask_logits = self.decoder(z, preprocessed_rgb, rgb)
         mask_cross_entropy_loss = F.binary_cross_entropy_with_logits(
-            input=mask_logits,
-            target=model_targets["object_mask"].float(),
+            input=predicted_object_mask_logits,
+            target=object_mask.float(),
         )
         background_rgb_mse_loss = F.mse_loss(
-            input=image,
-            target=model_targets["rgb_with_object"],
+            input=predicted_rgb_with_object,
+            target=rgb_with_object,
         )
-        object_rgb_mse_loss = F.mse_loss(
-            input=image[model_targets["object_mask"]],
-            target=model_targets["rgb_with_object"][model_targets["object_mask"]],
-        )
-
-        loss = mask_cross_entropy_loss + self.encoder.kl + object_rgb_mse_loss + background_rgb_mse_loss
+        object_rgb_mse_loss = 0.
+        for single_predicted_rgb_with_object, single_rgb_with_object, single_object_mask in zip(predicted_rgb_with_object, rgb_with_object, object_mask):
+            object_rgb_mse_loss += F.mse_loss(
+                input=single_predicted_rgb_with_object[:, single_object_mask],
+                target=single_rgb_with_object[:, single_object_mask],
+            )
+        object_rgb_mse_loss /= predicted_rgb_with_object.shape[0]
+        loss = 10. * mask_cross_entropy_loss + self.encoder.kl + object_rgb_mse_loss + background_rgb_mse_loss
         self.log("ce_loss", mask_cross_entropy_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         self.log("background_mse", background_rgb_mse_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         self.log("object_mse", object_rgb_mse_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)

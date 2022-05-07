@@ -21,14 +21,14 @@ class GaussianNoiseWithSquareSyntheticDataGenerator(SyntheticDataGenerator):
     def generate(self, num_samples: int) -> List[TrainingSample]:
         training_samples = []
         for i in range(num_samples):
-            rgb = torch.normal(0., 1., (self.image_size[0], self.image_size[1], 3))
+            rgb = torch.normal(0., 1., (3, self.image_size[0], self.image_size[1]))
             top = torch.randint(0, self.image_size[0] - self.square_size, (1,))
             left = torch.randint(0, self.image_size[1] - self.square_size, (1,))
             object_mask = torch.zeros((self.image_size[0], self.image_size[1])).bool()
             object_mask[top:top + self.square_size, left:left + self.square_size] = True
             object_color = torch.rand((3,))
             rgb_with_object = rgb.clone()
-            rgb_with_object[object_mask] = object_color
+            rgb_with_object[:, object_mask] = object_color
 
             training_sample = TrainingSample(
                 model_input=ModelInput(rgb=rgb.float()),

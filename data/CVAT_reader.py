@@ -69,7 +69,7 @@ def create_masks(masks_dir:str, image_dir:str, cvat_xml:str, scale_factor:float 
                 dir_create(os.path.join(masks_dir, folder))
     for img in tqdm(img_list, desc='Writing masks'):
         img_path = os.path.join(image_dir, img)
-        anno = parse_anno_file(cvat_xml, os.path.basename(img))
+        anno = parse_anno_file(cvat_xml, img_path)
         current_image = cv2.imread(img_path)
         height, width, _ = current_image.shape
         for image in anno:
@@ -82,7 +82,7 @@ def create_masks(masks_dir:str, image_dir:str, cvat_xml:str, scale_factor:float 
             background.save(output_path)
 
 
-def create_images_1(masks_dir: str, image_dir: str, image_1_dir: str, image_size: Tuple[int,int]):
+def create_images_1(masks_dir: str, image_dir: str, image_1_dir: str):
     dir_create(image_1_dir)
     for root, dirs, files in os.walk(image_dir, topdown=True):
         for box in dirs:

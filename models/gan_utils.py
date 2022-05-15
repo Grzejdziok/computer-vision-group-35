@@ -35,9 +35,8 @@ class Generator(nn.Module):
         rgb_flat = torch.flatten(rgb, start_dim=1)
         features = self.feature_extractor(torch.concat([z, rgb_flat], dim=1))
         mask_logits = self.mask_head(features).view(-1, self.img_shape[1], self.img_shape[2])
-        masks = torch.sigmoid(mask_logits).unsqueeze(3)
-        # image = self.image_head(features).view(-1, self.img_shape[1], self.img_shape[2], 3) * masks + rgb * (1.-masks)
-        image = self.image_head(features) * masks + rgb * (1.-masks)
+        masks = torch.sigmoid(mask_logits).unsqueeze(1).detach()
+        image = self.image_head(features).view(-1, 3, self.img_shape[1], self.img_shape[2]) * masks + rgb * (1.-masks)
 
         return image, mask_logits
 

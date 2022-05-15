@@ -9,7 +9,7 @@ from data.real_data_generator import RealDataGenerator
 from data.real_data import RealDataModule
 
 from models.vae_end_to_end import VAEEndToEndFullyConnected
-from models.gan_end_to_end import GANEndToEnd
+from models.gan_fc_e2e import GANEndToEndFullyConnected
 import matplotlib.pyplot as plt
 
 from data.CVAT_reader import create_masks, create_images_1
@@ -30,12 +30,11 @@ if __name__ == "__main__":
     real_data_generator = RealDataGenerator()
     print(f"Total number of samples is: {real_data_generator._total_samples(image_single_dir)}")
 
-    # num_train_samples = 500
-    # num_val_samples = 150
-    train_ratio = 0.75
+    model = "GAN-fc"
+    train_ratio = 0.99
     image_size = (32, 32)
     square_size = 7
-    batch_size = 100
+    batch_size = 30
     datamodule = RealDataModule(
         train_ratio = train_ratio,
         real_data_generator=real_data_generator,
@@ -46,15 +45,22 @@ if __name__ == "__main__":
         image_dir=image_single_dir,
         datamodule_dir=datamodule_dir
     )
+    if model == "VAE-fc":
+        latent_dims = 512
+        hidden_dims = 1024
+        lr = 1e-3
+        betas = (0.5, 0.999) # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims, hidden_dims, hidden_dims], lr=lr, betas=betas)
 
-    latent_dims = 512
-    hidden_dims = 1024
-    lr = 1e-3
-    betas = (0.5, 0.999) # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
-    model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims, hidden_dims, hidden_dims], lr=lr, betas=betas)
-    # model = GANEndToEnd(width=image_size[0], height=image_size[1], latent_dim=latent_dims, hidden_dim=hidden_dims, lr=lr, betas=betas, batch_size=batch_size)
-    
-    trainer = pl.Trainer(max_steps=60, accelerator='gpu', devices=1, enable_checkpointing=False)
+    elif model == "GAN-fc":
+        noise_dim = 32
+        hidden_dims_g = [1024, 1024, 1024, 1024, 1024]
+        hidden_dims_d = [2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]
+        lr = 1e-2
+        betas = (0.5, 0.999) # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        model = GANEndToEndFullyConnected(width=image_size[0], height=image_size[1], noise_dim=noise_dim, hidden_dims_g=hidden_dims_g, hidden_dims_d = hidden_dims_d, lr=lr, betas=betas, batch_size=batch_size)
+
+    trainer = pl.Trainer(max_steps=5000, accelerator='gpu', devices=1, enable_checkpointing=False)
     trainer.fit(model=model, datamodule=datamodule)
 
     batch = next(iter(datamodule.predict_dataloader()))

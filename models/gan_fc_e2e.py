@@ -6,19 +6,20 @@ import torchvision
 import torchvision.transforms as transforms
 from pytorch_lightning import LightningDataModule, LightningModule, Trainer
 from torch.utils.data import DataLoader, random_split
-from models.gan_utils import Generator, Discriminator
+from models.gan_fc_utils import GeneratorFullyConnected, DiscriminatorFullyConnected
 from collections import OrderedDict
 from data.training_sample import TrainingSample, ModelOutput
 from typing import List, Tuple
 
 
-class GANEndToEnd(LightningModule):
+class GANEndToEndFullyConnected(LightningModule):
     def __init__(
         self,
         width: int,
         height: int,
-        latent_dim: int,
-        hidden_dim: int,
+        noise_dim: int,
+        hidden_dims_g: List[int],
+        hidden_dims_d: List[int],
         lr: float,
         betas: Tuple[float, float],
         batch_size: int):
@@ -27,12 +28,12 @@ class GANEndToEnd(LightningModule):
 
         # networks
         data_shape = (3, width, height)
-        self.generator = Generator(latent_dim=self.hparams.latent_dim, hidden_dim=self.hparams.hidden_dim, img_shape=data_shape)
-        self.discriminator = Discriminator(img_shape=data_shape)
+        self.generator = GeneratorFullyConnected(noise_dim=self.hparams.noise_dim, hidden_dims=self.hparams.hidden_dims_g, img_shape=data_shape)
+        self.discriminator = DiscriminatorFullyConnected(hidden_dims=self.hparams.hidden_dims_d, img_shape=data_shape)
 
     def forward(self, batch: TrainingSample) -> ModelOutput:
         rgb = batch["model_input"]["rgb"]
-        z = torch.normal(0., 1., (rgb.shape[0], self.hparams.latent_dim)).type_as(rgb)
+        z = torch.normal(0., 1., (rgb.shape[0], self.hparams.noise_dim)).type_as(rgb)
         image, mask_logits = self.generator(z, rgb)
         soft_object_mask = torch.sigmoid(mask_logits).float()
         model_outputs = ModelOutput(rgb_with_object=image, soft_object_mask=soft_object_mask)
@@ -93,11 +94,3 @@ class GANEndToEnd(LightningModule):
         opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr, betas=betas)
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=betas)
         return [opt_g, opt_d], []
-
-    # def on_epoch_end(self):
-    #     z = self.validation_z.type_as(self.generator.model[0].weight)
-
-    #     # log sampled images
-    #     sample_imgs = self(z)
-    #     grid = torchvision.utils.make_grid(sample_imgs)
-    #     self.logger.experiment.add_image("generated_images", grid, self.current_epoch)

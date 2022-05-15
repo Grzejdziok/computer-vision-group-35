@@ -11,23 +11,28 @@ class RealDataModule(pl.LightningDataModule):
 
     def __init__(self,
                  real_data_generator: RealDataGenerator,
-                 num_train_samples: int,
-                 num_val_samples: int,
+                 train_ratio: float,
                  batch_size: int,
                  resize: bool,
-                 resize_dims: Tuple[int, int]
+                 resize_dims: Tuple[int, int],
+                 masks_dir: str,
+                 image_dir: str,
+                 datamodule_dir: str
                  ):
         super().__init__()
         self._real_data_generator = real_data_generator
-        self._num_train_samples = num_train_samples
-        self._num_val_samples = num_val_samples
+        self._train_ratio = train_ratio
         self._batch_size = batch_size
+        self._masks_dir = masks_dir
+        self._image_dir = image_dir
+        self._datamodule_dir = datamodule_dir
         self.resize = resize
         self.resize_dims = resize_dims
 
     def prepare_data(self):
-        self.train_set = ListDataset(self._real_data_generator.generate(self._num_train_samples, resize=self.resize, resize_dims=self.resize_dims))
-        self.val_set = ListDataset(self._real_data_generator.generate(self._num_val_samples, resize=self.resize, resize_dims=self.resize_dims))
+        self.train_set = ListDataset(self._real_data_generator.generate("train", self._train_ratio, resize=self.resize, resize_dims=self.resize_dims, masks_dir=self._masks_dir, image_dir=self._image_dir, datamodule_dir=self._datamodule_dir))
+        self.val_set = ListDataset(self._real_data_generator.generate("test", self._train_ratio, resize=self.resize, resize_dims=self.resize_dims, masks_dir=self._masks_dir, image_dir=self._image_dir, datamodule_dir=self._datamodule_dir))
+        del self._real_data_generator #its very large
 
     def train_dataloader(self):
         return DataLoader(self.train_set, batch_size=self._batch_size, shuffle=True)
@@ -40,5 +45,3 @@ class RealDataModule(pl.LightningDataModule):
 
     def predict_dataloader(self):
         return DataLoader(self.val_set, batch_size=self._batch_size, shuffle=True)
-
-

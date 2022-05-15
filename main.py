@@ -17,46 +17,44 @@ from data.CVAT_reader import create_masks, create_images_1
 
 if __name__ == "__main__":
     
-    num_train_samples = 100000
-    num_val_samples = 100
+
+    rerun = False
+    masks_dir = "masks"
+    image_dir = "images"
+    cvat_xml = "images/annotations.xml"
+    image_single_dir = "images_single_object"
+    datamodule_dir = "datamodule.json"
+    if not os.path.exists(masks_dir) or not os.path.exists(image_single_dir) or rerun:
+        create_masks(masks_dir, image_dir, cvat_xml)
+        create_images_1(masks_dir, image_dir, image_single_dir)
+    real_data_generator = RealDataGenerator()
+    print(f"Total number of samples is: {real_data_generator._total_samples(image_single_dir)}")
+
+    # num_train_samples = 500
+    # num_val_samples = 150
+    train_ratio = 0.75
     image_size = (32, 32)
     square_size = 7
     batch_size = 100
-    rerun = False
-    if not os.path.exists("masks") or rerun:
-        masks_dir = "masks"
-        image_dir = "images"
-        cvat_xml = "images/annotations.xml"
-        image_1_dir = "images_1"
-        create_masks(masks_dir, image_dir, cvat_xml)
-        create_images_1(masks_dir, image_dir, image_1_dir, image_size)
-
-    # synthetic_data_generator = GaussianNoiseWithSquareSyntheticDataGenerator(image_size=image_size, square_size=square_size)
-    # datamodule = SyntheticDataModule(
-    #     num_train_samples=num_train_samples,
-    #     num_val_samples=num_val_samples,
-    #     synthetic_data_generator=synthetic_data_generator,
-    #     batch_size=batch_size,
-    # )
-    real_data_generator = RealDataGenerator()
     datamodule = RealDataModule(
-        num_train_samples=num_train_samples,
-        num_val_samples=num_val_samples,
+        train_ratio = train_ratio,
         real_data_generator=real_data_generator,
         batch_size=batch_size,
         resize=True,
-        resize_dims=image_size
+        resize_dims=image_size,
+        masks_dir=masks_dir,
+        image_dir=image_single_dir,
+        datamodule_dir=datamodule_dir
     )
-    datamodule.prepare_data()
 
     latent_dims = 512
     hidden_dims = 1024
     lr = 1e-3
     betas = (0.5, 0.999) # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
     model = VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0], hdim=[hidden_dims, hidden_dims, hidden_dims, hidden_dims, hidden_dims], lr=lr, betas=betas)
-    #model = GANEndToEnd(width=image_size[0], height=image_size[1], latent_dim=latent_dims, hidden_dim=hidden_dims, lr=lr, betas=betas, batch_size=batch_size)
+    # model = GANEndToEnd(width=image_size[0], height=image_size[1], latent_dim=latent_dims, hidden_dim=hidden_dims, lr=lr, betas=betas, batch_size=batch_size)
     
-    trainer = pl.Trainer(max_steps=12000, accelerator='gpu', devices=1, enable_checkpointing=False)
+    trainer = pl.Trainer(max_steps=60, accelerator='gpu', devices=1, enable_checkpointing=False)
     trainer.fit(model=model, datamodule=datamodule)
 
     batch = next(iter(datamodule.predict_dataloader()))

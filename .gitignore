@@ -6,4 +6,5 @@ __pycache__
 results.png
 images/
 masks/
-images_1/
+images_single_object/
+datamodule.json

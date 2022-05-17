@@ -46,7 +46,6 @@ def get_model(model_name: str, image_size: Tuple[int, int]) -> pl.LightningModul
 
 def main(model_name: str):
     dataset_dir = "dataset"
-    datamodule_dir = "datamodule.json"
     real_data_generator = RealDataGenerator()
 
     image_size = (32, 32)
@@ -58,7 +57,6 @@ def main(model_name: str):
         resize=True,
         resize_dims=image_size,
         dataset_dir=dataset_dir,
-        datamodule_dir=datamodule_dir,
     )
     model = get_model(model_name=model_name, image_size=image_size)
 

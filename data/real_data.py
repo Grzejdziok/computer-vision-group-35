@@ -15,13 +15,11 @@ class RealDataModule(pl.LightningDataModule):
                  resize: bool,
                  resize_dims: Tuple[int, int],
                  dataset_dir: str,
-                 datamodule_dir: str
                  ):
         super().__init__()
         self._real_data_generator = real_data_generator
         self._batch_size = batch_size
         self._dataset_dir = dataset_dir
-        self._datamodule_dir = datamodule_dir
         self.resize = resize
         self.resize_dims = resize_dims
 

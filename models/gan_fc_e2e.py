@@ -22,7 +22,7 @@ class GANEndToEndFullyConnected(LightningModule):
         hidden_dims_d: List[int],
         lr: float,
         betas: Tuple[float, float],
-        batch_size: int):
+    ):
         super().__init__()
         self.save_hyperparameters()
 

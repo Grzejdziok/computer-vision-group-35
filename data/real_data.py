@@ -15,11 +15,13 @@ class RealDataModule(pl.LightningDataModule):
                  resize: bool,
                  resize_dims: Tuple[int, int],
                  dataset_dir: str,
+                 single_item_box_only: bool,
                  ):
         super().__init__()
         self._real_data_generator = real_data_generator
         self._batch_size = batch_size
         self._dataset_dir = dataset_dir
+        self._single_item_box_only = single_item_box_only
         self.resize = resize
         self.resize_dims = resize_dims
 
@@ -28,6 +30,7 @@ class RealDataModule(pl.LightningDataModule):
             resize=self.resize,
             resize_dims=self.resize_dims,
             dataset_dir=self._dataset_dir,
+            single_item_box_only=self._single_item_box_only,
         )
         self.train_set = ListDataset(generated_data)
 

@@ -50,17 +50,18 @@ def main(model_name: str):
 
     image_size = (32, 32)
     square_size = 7
-    batch_size = 30
+    batch_size = 100
     datamodule = RealDataModule(
         real_data_generator=real_data_generator,
         batch_size=batch_size,
         resize=True,
         resize_dims=image_size,
         dataset_dir=dataset_dir,
+        single_item_box_only=True,
     )
     model = get_model(model_name=model_name, image_size=image_size)
 
-    trainer = pl.Trainer(max_steps=15000, accelerator='gpu', devices=1, enable_checkpointing=False)
+    trainer = pl.Trainer(max_steps=30000, accelerator='gpu', devices=1, enable_checkpointing=False)
     trainer.fit(model=model, datamodule=datamodule)
 
     batch = next(iter(datamodule.predict_dataloader()))

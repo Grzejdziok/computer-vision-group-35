@@ -45,35 +45,24 @@ def get_model(model_name: str, image_size: Tuple[int, int]) -> pl.LightningModul
 
 
 def main(model_name: str):
-    rerun = False
-    masks_dir = "masks"
-    image_dir = "images"
-    cvat_xml = "images/annotations.xml"
-    image_single_dir = "images_single_object"
+    dataset_dir = "dataset"
     datamodule_dir = "datamodule.json"
-    if not os.path.exists(masks_dir) or not os.path.exists(image_single_dir) or rerun:
-        create_masks(masks_dir, image_dir, cvat_xml)
-        create_images_1(masks_dir, image_dir, image_single_dir)
     real_data_generator = RealDataGenerator()
-    print(f"Total number of samples is: {real_data_generator._total_samples(image_single_dir)}")
 
-    train_ratio = 0.99
     image_size = (32, 32)
     square_size = 7
     batch_size = 30
     datamodule = RealDataModule(
-        train_ratio=train_ratio,
         real_data_generator=real_data_generator,
         batch_size=batch_size,
         resize=True,
         resize_dims=image_size,
-        masks_dir=masks_dir,
-        image_dir=image_single_dir,
-        datamodule_dir=datamodule_dir
+        dataset_dir=dataset_dir,
+        datamodule_dir=datamodule_dir,
     )
     model = get_model(model_name=model_name, image_size=image_size)
 
-    trainer = pl.Trainer(max_steps=5000, accelerator='gpu', devices=1, enable_checkpointing=False)
+    trainer = pl.Trainer(max_steps=0, accelerator='gpu', devices=1, enable_checkpointing=False)
     trainer.fit(model=model, datamodule=datamodule)
 
     batch = next(iter(datamodule.predict_dataloader()))

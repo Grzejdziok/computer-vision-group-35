@@ -1,21 +1,18 @@
 import numpy as np
-from abc import ABC
 import re
 from tqdm import tqdm
 from typing import Tuple, List
-import torch
 import os
 import xml.etree.ElementTree as ET
 from PIL import Image
 import torchvision.transforms.functional as TF
 from data.training_sample import TrainingSample, ModelInput, ModelTarget
 from data.CVAT_reader import read_mask_for_image
-import json
 
 
 class RealDataGenerator:
 
-    def generate(self, resize: bool, resize_dims: Tuple[int, int], dataset_dir: str) -> List[TrainingSample]:
+    def generate(self, resize: bool, resize_dims: Tuple[int, int], dataset_dir: str, single_item_box_only: bool) -> List[TrainingSample]:
         """If resize, resize_dims must be provided"""
         cvat_xml = os.path.join(dataset_dir, "annotations.xml")
         cvat_xml_root = ET.parse(cvat_xml).getroot()
@@ -23,6 +20,8 @@ class RealDataGenerator:
         samples = []
         crop_param = (0, 0, 1430, 1080)
         subset_names = [directory for directory in os.listdir(image_dir) if os.path.isdir(os.path.join(image_dir, directory))]
+        if single_item_box_only:
+            subset_names = [subset_name for subset_name in subset_names if re.match("single_item_box_\d", subset_name)]
         for subset_name in tqdm(subset_names, desc=f"Generating dataset"):
             assert "box" in subset_name, subset_name
             subset_image_dir = os.path.join(image_dir, subset_name)

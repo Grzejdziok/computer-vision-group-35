@@ -28,7 +28,6 @@ class RealDataModule(pl.LightningDataModule):
             resize=self.resize,
             resize_dims=self.resize_dims,
             dataset_dir=self._dataset_dir,
-            datamodule_dir=self._datamodule_dir,
         )
         self.train_set = ListDataset(generated_data)
 

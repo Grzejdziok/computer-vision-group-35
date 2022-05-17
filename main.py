@@ -60,7 +60,7 @@ def main(model_name: str):
     )
     model = get_model(model_name=model_name, image_size=image_size)
 
-    trainer = pl.Trainer(max_steps=0, accelerator='gpu', devices=1, enable_checkpointing=False)
+    trainer = pl.Trainer(max_steps=15000, accelerator='gpu', devices=1, enable_checkpointing=False)
     trainer.fit(model=model, datamodule=datamodule)
 
     batch = next(iter(datamodule.predict_dataloader()))

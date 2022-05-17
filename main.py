@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", choices=[VAE_FC, GAN_FC], required=True)
-    parser.add_argument("--load-weights-from", required=True)
+    parser.add_argument("--load-weights-from", required=False, default=None)
     parser.add_argument("--predict-only", action="store_true", default=False)
     args = parser.parse_args()
 

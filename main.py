@@ -1,6 +1,7 @@
 from typing import Tuple
 import argparse
 import torch
+from datetime import datetime
 import torchvision
 import pytorch_lightning as pl
 import os
@@ -63,6 +64,8 @@ def main(model_name: str):
 
     trainer = pl.Trainer(max_steps=30000, accelerator='gpu', devices=1, enable_checkpointing=False)
     trainer.fit(model=model, datamodule=datamodule)
+
+    torch.save(model, f"{model_name}_{datetime.now()}.pt")
 
     batch = next(iter(datamodule.predict_dataloader()))
     model.eval()

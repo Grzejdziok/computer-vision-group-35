@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 import argparse
 import torch
 from datetime import datetime
@@ -45,7 +45,7 @@ def get_model(model_name: str, image_size: Tuple[int, int]) -> pl.LightningModul
         raise ValueError()
 
 
-def main(model_name: str):
+def main(model_name: str, load_weights_from: Optional[str], predict_only: bool) -> None:
     dataset_dir = "dataset"
     real_data_generator = RealDataGenerator()
 
@@ -60,12 +60,16 @@ def main(model_name: str):
         dataset_dir=dataset_dir,
         single_item_box_only=True,
     )
+    datamodule.prepare_data()
     model = get_model(model_name=model_name, image_size=image_size)
 
-    trainer = pl.Trainer(max_steps=30000, accelerator='gpu', devices=1, enable_checkpointing=False)
-    trainer.fit(model=model, datamodule=datamodule)
+    if load_weights_from is not None:
+        model = torch.load(load_weights_from)
 
-    torch.save(model, f"{model_name}_{datetime.now()}.pt")
+    if not predict_only:
+        trainer = pl.Trainer(max_steps=30000, accelerator='gpu', devices=1, enable_checkpointing=False)
+        trainer.fit(model=model, datamodule=datamodule)
+        torch.save(model, f"{model_name}_{datetime.now()}.pt")
 
     batch = next(iter(datamodule.predict_dataloader()))
     model.eval()
@@ -109,9 +113,12 @@ if __name__ == "__main__":
     # example usage:
     # python main.py --model-name vae_fc
     # python main.py --model-name gan_fc
+    # python main.py --model-name vae_fc --load-weights-from vae_fc.pt --predict-only
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", choices=[VAE_FC, GAN_FC], required=True)
+    parser.add_argument("--load-weights-from", required=True)
+    parser.add_argument("--predict-only", action="store_true", default=False)
     args = parser.parse_args()
 
-    main(model_name=args.model_name)
+    main(model_name=args.model_name, load_weights_from=args.load_weights_from, predict_only=args.predict_only)

@@ -25,9 +25,11 @@ class VAEEndToEndFullyConnected(pl.LightningModule):
         self.betas = betas
         self.encoder = EncoderFullyConnected(latent_dims, s_img, hdim)
         self.decoder = DecoderFullyConnected(latent_dims, s_img, hdim)
+        self.dataset_mean = torch.tensor(dataset_mean or (0., 0., 0.))
+        self.dataset_std = torch.tensor(dataset_std or (1., 1., 1.))
         self.preprocess_transform = torchvision.transforms.Normalize(
-            mean=dataset_mean or (0., 0., 0.),
-            std=dataset_std or (1., 1., 1.),
+            mean=self.dataset_mean,
+            std=self.dataset_std,
         )
 
     def forward(self, batch: TrainingSample) -> ModelOutput:

@@ -46,13 +46,19 @@ class DecoderFullyConnected(nn.Module):
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
         super(DecoderFullyConnected, self).__init__()
 
+        rgb_embedding_dims = s_img
         common_layers = []
-        in_features = latent_dims + s_img**2*3
+        in_features = latent_dims + rgb_embedding_dims
         for h in hdim[::-1]:
             common_layers.append(nn.Linear(in_features, h))
             common_layers.append(nn.ReLU())
             in_features = h
 
+        self.rgb_embedding = nn.Sequential(
+            nn.Linear(s_img**2*3, rgb_embedding_dims**2),
+            nn.ReLU(),
+            nn.Linear(rgb_embedding_dims**2, rgb_embedding_dims),
+        )
         self.feature_extractor = nn.Sequential(*common_layers)
         self.image_head = nn.Linear(in_features, s_img**2*3)
         self.mask_head = nn.Linear(in_features, s_img**2)
@@ -60,7 +66,8 @@ class DecoderFullyConnected(nn.Module):
 
     def forward(self, z: torch.Tensor, normalized_rgb: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         normalized_rgb_flat = torch.flatten(normalized_rgb, start_dim=1)
-        features = self.feature_extractor(torch.concat([z, normalized_rgb_flat], dim=1))
+        rgb_embedded = self.rgb_embedding(normalized_rgb_flat)
+        features = self.feature_extractor(torch.concat([z, rgb_embedded], dim=1))
         mask_logits = self.mask_head(features).view(-1, self.s_img, self.s_img)
         masks = torch.sigmoid(mask_logits).unsqueeze(1).detach()
         image = self.image_head(features).view(-1, 3, self.s_img, self.s_img) * masks + rgb * (1.-masks)

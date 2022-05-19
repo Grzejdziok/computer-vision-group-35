@@ -79,7 +79,7 @@ def main(model_name: str, dataset_type: str, batch_size: int, max_steps: Optiona
     if not predict_only:
         trainer = pl.Trainer(max_steps=max_steps, accelerator='gpu', devices=1, enable_checkpointing=False)
         trainer.fit(model=model, train_dataloaders=datamodule.train_dataloader())
-        torch.save(model, f"{model_name}_{datetime.now()}.pt")
+        torch.save(model, f"{model_name}_{str(datetime.now()).replace(':', '_')}.pt")
 
     batch = next(iter(datamodule.predict_dataloader()))
     model.eval()

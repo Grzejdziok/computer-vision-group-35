@@ -69,7 +69,7 @@ class DecoderFullyConnected(nn.Module):
         rgb_embedded = self.rgb_embedding(normalized_rgb_flat)
         features = self.feature_extractor(torch.concat([z, rgb_embedded], dim=1))
         mask_logits = self.mask_head(features).view(-1, self.s_img, self.s_img)
-        masks = torch.sigmoid(mask_logits).unsqueeze(1).detach()
+        masks = (torch.sigmoid(mask_logits).unsqueeze(1).detach() > 0.5).float()
         image = self.image_head(features).view(-1, 3, self.s_img, self.s_img) * masks + rgb * (1.-masks)
 
         return image, mask_logits

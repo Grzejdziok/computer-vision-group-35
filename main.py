@@ -1,73 +1,83 @@
-from typing import Tuple, Optional
+from typing import Optional
 import argparse
 import torch
 from datetime import datetime
-import torchvision
 import pytorch_lightning as pl
-import os
 
+from data.data_generator import DataGenerator
 from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGenerator
-from data.synthetic_data import SyntheticDataModule
 from data.real_data_generator import RealDataGenerator
-from data.real_data import RealDataModule
+from data.datamodule import SingleItemGenerationDataModule
 
 from models.vae_end_to_end import VAEEndToEndFullyConnected
 from models.gan_fc_e2e import GANEndToEndFullyConnected
 import matplotlib.pyplot as plt
 
-from data.CVAT_reader import create_masks, create_images_1
-
 
 VAE_FC = "vae_fc"
 GAN_FC = "gan_fc"
+SYNTHETIC = "synthetic"
+SINGLE_ITEM_BOXES_IN_FLAT_32 = "single_item_boxes_in_flat_32"
+ALL_BOXES_IN_FLAT_32 = "all_boxes_in_flat_32"
 
 
-def get_model(model_name: str, image_size: Tuple[int, int]) -> pl.LightningModule:
+def get_data_generator(dataset_type: str) -> DataGenerator:
+    if dataset_type == SYNTHETIC:
+        return GaussianNoiseWithSquareSyntheticDataGenerator(image_size=(16, 16), num_samples=10000, square_size=7)
+    elif dataset_type == SINGLE_ITEM_BOXES_IN_FLAT_32:
+        return RealDataGenerator(resize=True, resize_dims=(32, 32), dataset_dir="dataset", single_item_box_only=True)
+    elif dataset_type == ALL_BOXES_IN_FLAT_32:
+        return RealDataGenerator(resize=True, resize_dims=(32, 32), dataset_dir="dataset", single_item_box_only=False)
+    else:
+        raise ValueError(f"Unknown type {dataset_type}")
+
+
+def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl.LightningModule:
+
+    dataset_statistics = datamodule.statistics
+
     if model_name == VAE_FC:
         latent_dims = 512
         hidden_dims = 1024
         lr = 1e-3
-        betas = (0.5,
-                 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
-        return VAEEndToEndFullyConnected(latent_dims=latent_dims, s_img=image_size[0],
-                                         hdim=[hidden_dims, hidden_dims, hidden_dims, hidden_dims, hidden_dims], lr=lr,
-                                         betas=betas)
+        betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        return VAEEndToEndFullyConnected(latent_dims=latent_dims,
+                                         s_img=dataset_statistics.image_size[0],
+                                         hdim=[hidden_dims, hidden_dims, hidden_dims, hidden_dims, hidden_dims],
+                                         lr=lr,
+                                         betas=betas,
+                                         dataset_mean=dataset_statistics.mean,
+                                         dataset_std=dataset_statistics.std,
+                                         )
     elif model_name == GAN_FC:
         noise_dim = 32
         hidden_dims_g = [1024, 1024, 1024, 1024, 1024]
         hidden_dims_d = [2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]
         lr = 1e-2
-        betas = (0.5,
-                 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
-        return GANEndToEndFullyConnected(width=image_size[0], height=image_size[1], noise_dim=noise_dim,
-                                         hidden_dims_g=hidden_dims_g, hidden_dims_d=hidden_dims_d, lr=lr, betas=betas,)
+        betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        return GANEndToEndFullyConnected(width=dataset_statistics.image_size[0],
+                                         height=dataset_statistics.image_size[1],
+                                         noise_dim=noise_dim,
+                                         hidden_dims_g=hidden_dims_g,
+                                         hidden_dims_d=hidden_dims_d,
+                                         lr=lr,
+                                         betas=betas,)
     else:
         raise ValueError()
 
 
-def main(model_name: str, load_weights_from: Optional[str], predict_only: bool) -> None:
-    dataset_dir = "dataset"
-    real_data_generator = RealDataGenerator()
-
-    image_size = (32, 32)
-    square_size = 7
-    batch_size = 100
-    datamodule = RealDataModule(
-        real_data_generator=real_data_generator,
-        batch_size=batch_size,
-        resize=True,
-        resize_dims=image_size,
-        dataset_dir=dataset_dir,
-        single_item_box_only=True,
-    )
+def main(model_name: str, dataset_type: str, batch_size: int, max_steps: Optional[int], load_weights_from: Optional[str], predict_only: bool) -> None:
+    assert predict_only or max_steps is not None
+    data_generator = get_data_generator(dataset_type=dataset_type)
+    datamodule = SingleItemGenerationDataModule(data_generator=data_generator, batch_size=batch_size)
     datamodule.prepare_data()
-    model = get_model(model_name=model_name, image_size=image_size)
+    model = get_model(model_name=model_name, datamodule=datamodule)
 
     if load_weights_from is not None:
         model = torch.load(load_weights_from)
 
     if not predict_only:
-        trainer = pl.Trainer(max_steps=30000, accelerator='gpu', devices=1, enable_checkpointing=False)
+        trainer = pl.Trainer(max_steps=max_steps, accelerator='gpu', devices=1, enable_checkpointing=False)
         trainer.fit(model=model, datamodule=datamodule)
         torch.save(model, f"{model_name}_{datetime.now()}.pt")
 
@@ -111,14 +121,23 @@ def main(model_name: str, load_weights_from: Optional[str], predict_only: bool) 
 
 if __name__ == "__main__":
     # example usage:
-    # python main.py --model-name vae_fc
-    # python main.py --model-name gan_fc
-    # python main.py --model-name vae_fc --load-weights-from vae_fc.pt --predict-only
+    # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 100 --max-steps 30000
+    # python main.py --model-name gan_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 30 --max-steps 10000
+    # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 10 --load-weights-from vae_fc.pt --predict-only
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", choices=[VAE_FC, GAN_FC], required=True)
+    parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, ALL_BOXES_IN_FLAT_32], required=True)
+    parser.add_argument("--batch-size", type=int, required=True)
+    parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--load-weights-from", required=False, default=None)
     parser.add_argument("--predict-only", action="store_true", default=False)
     args = parser.parse_args()
 
-    main(model_name=args.model_name, load_weights_from=args.load_weights_from, predict_only=args.predict_only)
+    main(model_name=args.model_name,
+         dataset_type=args.dataset_type,
+         load_weights_from=args.load_weights_from,
+         predict_only=args.predict_only,
+         batch_size=args.batch_size,
+         max_steps=args.max_steps,
+         )

@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 import torch
 import torchvision
 import torchvision.transforms.functional as TF
@@ -10,14 +10,25 @@ from models.vae_utils import EncoderFullyConnected, DecoderFullyConnected
 
 
 class VAEEndToEndFullyConnected(pl.LightningModule):
-    def __init__(self, latent_dims: int, s_img: int, hdim: List[int], lr: float, betas:tuple):
+    def __init__(self,
+                 latent_dims: int,
+                 s_img: int,
+                 hdim: List[int],
+                 lr: float,
+                 betas: Tuple[float, float],
+                 dataset_mean: Optional[Tuple[float, float, float]],
+                 dataset_std: Optional[Tuple[float, float, float]],
+                 ):
         super().__init__()
         self.latent_dims = latent_dims
         self.lr = lr
-        self.betas=betas
+        self.betas = betas
         self.encoder = EncoderFullyConnected(latent_dims, s_img, hdim)
         self.decoder = DecoderFullyConnected(latent_dims, s_img, hdim)
-        self.preprocess_transform = torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        self.preprocess_transform = torchvision.transforms.Normalize(
+            mean=dataset_mean or (0., 0., 0.),
+            std=dataset_std or (1., 1., 1.),
+        )
 
     def forward(self, batch: TrainingSample) -> ModelOutput:
         rgb = batch["model_input"]["rgb"]

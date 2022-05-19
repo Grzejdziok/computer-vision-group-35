@@ -1,26 +1,21 @@
-from abc import ABC
 from typing import Tuple, List
 
 import torch
 
+from data.data_generator import DataGenerator
 from data.training_sample import TrainingSample, ModelInput, ModelTarget
 
 
-class SyntheticDataGenerator(ABC):
+class GaussianNoiseWithSquareSyntheticDataGenerator(DataGenerator):
 
-    def generate(self, num_samples: int) -> List[TrainingSample]:
-        raise NotImplementedError()
-
-
-class GaussianNoiseWithSquareSyntheticDataGenerator(SyntheticDataGenerator):
-
-    def __init__(self, image_size: Tuple[int, int], square_size: int):
+    def __init__(self, image_size: Tuple[int, int], square_size: int, num_samples: int):
         self.image_size = image_size
         self.square_size = square_size
+        self._num_samples = num_samples
 
-    def generate(self, num_samples: int) -> List[TrainingSample]:
+    def generate(self) -> List[TrainingSample]:
         training_samples = []
-        for i in range(num_samples):
+        for i in range(self._num_samples):
             rgb = torch.normal(0., 1., (3, self.image_size[0], self.image_size[1]))
             top = torch.randint(0, self.image_size[0] - self.square_size, (1,))
             left = torch.randint(0, self.image_size[1] - self.square_size, (1,))

@@ -42,7 +42,7 @@ class VAEEndToEndFullyConnected(pl.LightningModule):
         return model_outputs
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, betas=self.betas)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, betas=self.betas)
         return optimizer
 
     def training_step(self, batch: TrainingSample, batch_idx: int) -> nn.Module:

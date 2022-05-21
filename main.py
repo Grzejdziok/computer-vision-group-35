@@ -3,13 +3,15 @@ import argparse
 import torch
 from datetime import datetime
 import pytorch_lightning as pl
+import torchvision
 
 from data.data_generator import DataGenerator
 from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGenerator
 from data.real_data_generator import RealDataGenerator
 from data.datamodule import SingleItemGenerationDataModule
 
-from models.vae_end_to_end import VAEEndToEndFullyConnected
+from models.vae_end_to_end import VAEEndToEnd
+from models.vae_utils import EncoderFullyConnected, DecoderFullyConnected
 from models.gan_fc_e2e import GANEndToEndFullyConnected
 import matplotlib.pyplot as plt
 
@@ -37,18 +39,24 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
     dataset_statistics = datamodule.statistics
 
     if model_name == VAE_FC:
-        latent_dims = 512
-        hidden_dims = 1024
+        latent_dims = 256
+        hidden_dims = 5 * [1024]
         lr = 1e-3
         betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
-        return VAEEndToEndFullyConnected(latent_dims=latent_dims,
-                                         s_img=dataset_statistics.image_size[0],
-                                         hdim=[hidden_dims, hidden_dims, hidden_dims, hidden_dims, hidden_dims],
-                                         lr=lr,
-                                         betas=betas,
-                                         dataset_mean=dataset_statistics.mean,
-                                         dataset_std=dataset_statistics.std,
-                                         )
+
+        encoder = EncoderFullyConnected(latent_dims, dataset_statistics.image_size[0], hidden_dims)
+        decoder = DecoderFullyConnected(latent_dims, dataset_statistics.image_size[0], hidden_dims)
+        preprocess_transform = torchvision.transforms.Normalize(
+            mean=dataset_statistics.mean,
+            std=dataset_statistics.std,
+        )
+        return VAEEndToEnd(
+            encoder=encoder,
+            decoder=decoder,
+            preprocess_transform=preprocess_transform,
+            lr=lr,
+            betas=betas,
+        )
     elif model_name == GAN_FC:
         noise_dim = 32
         hidden_dims_g = [1024, 1024, 1024, 1024, 1024]

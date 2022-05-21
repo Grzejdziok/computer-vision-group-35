@@ -1,32 +1,57 @@
+from abc import ABC
 from typing import List, Tuple
 import torch
 import torch.nn as nn
 
 
-class EncoderFullyConnected(nn.Module):
+class Encoder(ABC, nn.Module):
+
+    def forward(self, rgb_with_object: torch.Tensor, object_mask: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError()
+
+    @property
+    def kl(self) -> torch.Tensor:
+        raise NotImplementedError()
+
+
+class Decoder(ABC, nn.Module):
+
+    def forward(self, z: torch.Tensor, normalized_rgb: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        raise NotImplementedError()
+
+
+class EncoderFullyConnected(Encoder):
 
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
         super(EncoderFullyConnected, self).__init__()
 
         input_dim = s_img**2*4
         common_layers = [nn.Flatten()]
-        for i, h in enumerate(hdim):
+        for h in hdim:
             common_layers.append(nn.Linear(hdim[i-1] if i > 0 else input_dim, h))
             common_layers.append(nn.ReLU())
+            input_dim = h
 
         self.feature_extractor = nn.Sequential(*common_layers)
-        self.mean_head = nn.Linear(hdim[-1], latent_dims)
-        self.sigma_head = nn.Linear(hdim[-1], latent_dims)
+        self.mean_head = nn.Linear(input_dim, latent_dims)
+        self.sigma_head = nn.Linear(input_dim, latent_dims)
 
         #distribution setup
         self.N = torch.distributions.Normal(0, 1)
-        self.kl = 0
+        self._kl = torch.zeros((1, ))
+
+    @property
+    def kl(self) -> torch.Tensor:
+        return self._kl
+
+    def sample(self, num_samples: int, device: torch.device) -> torch.Tensor:
+        return self.N.sample((num_samples, self.mean_head.out_features)).to(device)
+
+    def reparameterize(self, mu: torch.Tensor, sig: torch.Tensor) -> torch.Tensor:
+        return mu + sig * self.sample(num_samples=mu.shape[0], device=mu.device)
 
     def kull_leib(self, mu: torch.Tensor, sig: torch.Tensor) -> torch.Tensor:
         return torch.distributions.kl.kl_divergence(torch.distributions.Normal(mu, sig), self.N).mean()
-
-    def reparameterize(self, mu: torch.Tensor, sig: torch.Tensor) -> torch.Tensor:
-        return mu + sig*self.N.sample(mu.shape).to(mu.device)
 
     def forward(self, rgb_with_object: torch.Tensor, object_mask: torch.Tensor) -> torch.Tensor:
         rgb_with_object_flat = torch.flatten(rgb_with_object, start_dim=1)
@@ -38,11 +63,11 @@ class EncoderFullyConnected(nn.Module):
         #reparameterize to find z
         z = self.reparameterize(mu, sig)
         #loss between N(0,I) and learned distribution
-        self.kl = self.kull_leib(mu, sig)
+        self._kl = self.kull_leib(mu, sig)
         return z
 
 
-class DecoderFullyConnected(nn.Module):
+class DecoderFullyConnected(Decoder):
     def __init__(self, latent_dims: int, s_img: int, hdim: List[int]):
         super(DecoderFullyConnected, self).__init__()
 

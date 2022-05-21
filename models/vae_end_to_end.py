@@ -1,4 +1,4 @@
-from typing import Tuple, List, Optional
+from typing import Tuple
 import torch
 import torchvision
 import torchvision.transforms.functional as TF
@@ -6,35 +6,27 @@ from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from data.training_sample import TrainingSample, ModelOutput
-from models.vae_utils import EncoderFullyConnected, DecoderFullyConnected
+from models.vae_utils import Encoder, Decoder
 
 
-class VAEEndToEndFullyConnected(pl.LightningModule):
+class VAEEndToEnd(pl.LightningModule):
     def __init__(self,
-                 latent_dims: int,
-                 s_img: int,
-                 hdim: List[int],
+                 encoder: Encoder,
+                 decoder: Decoder,
+                 preprocess_transform: torchvision.transforms.Normalize,
                  lr: float,
                  betas: Tuple[float, float],
-                 dataset_mean: Optional[Tuple[float, float, float]],
-                 dataset_std: Optional[Tuple[float, float, float]],
                  ):
         super().__init__()
-        self.latent_dims = latent_dims
         self.lr = lr
         self.betas = betas
-        self.encoder = EncoderFullyConnected(latent_dims, s_img, hdim)
-        self.decoder = DecoderFullyConnected(latent_dims, s_img, hdim)
-        self.dataset_mean = torch.tensor(dataset_mean or (0., 0., 0.))
-        self.dataset_std = torch.tensor(dataset_std or (1., 1., 1.))
-        self.preprocess_transform = torchvision.transforms.Normalize(
-            mean=self.dataset_mean,
-            std=self.dataset_std,
-        )
+        self.encoder = encoder
+        self.decoder = decoder
+        self.preprocess_transform = preprocess_transform
 
     def forward(self, batch: TrainingSample) -> ModelOutput:
         rgb = batch["model_input"]["rgb"]
-        z = torch.normal(0., 1., (rgb.shape[0], self.latent_dims))
+        z = self.encoder.sample(num_samples=rgb.shape[0], device=rgb.device)
         normalized_rgb = self.preprocess_transform(rgb)
         image, mask_logits = self.decoder(z, normalized_rgb, rgb)
         soft_object_mask = torch.sigmoid(mask_logits).float()

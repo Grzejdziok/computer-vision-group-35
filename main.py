@@ -11,11 +11,13 @@ from data.datamodule import SingleItemGenerationDataModule
 
 from models.vae_end_to_end import VAEEndToEndFullyConnected
 from models.gan_fc_e2e import GANEndToEndFullyConnected
+from models.gan_cv_e2e import GANEndToEndConvolutional
 import matplotlib.pyplot as plt
 
 
 VAE_FC = "vae_fc"
 GAN_FC = "gan_fc"
+GAN_CV = "gan_cv"
 SYNTHETIC = "synthetic"
 SINGLE_ITEM_BOXES_IN_FLAT_32 = "single_item_boxes_in_flat_32"
 ALL_BOXES_IN_FLAT_32 = "all_boxes_in_flat_32"
@@ -51,9 +53,9 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
                                          )
     elif model_name == GAN_FC:
         noise_dim = 32
-        hidden_dims_g = [1024, 1024, 1024, 1024, 1024]
-        hidden_dims_d = [2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]
-        lr = 1e-2
+        hidden_dims_g = [2048, 1024, 512, 256, 128, 64]
+        hidden_dims_d = [2048, 1024, 512, 256, 128, 64, 32, 16]
+        lr = 0.0002
         betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
         return GANEndToEndFullyConnected(width=dataset_statistics.image_size[0],
                                          height=dataset_statistics.image_size[1],
@@ -62,6 +64,20 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
                                          hidden_dims_d=hidden_dims_d,
                                          lr=lr,
                                          betas=betas,)
+    elif model_name == GAN_CV:
+        noise_dim = 32
+        hidden_dims_g = [1024, 1024, 1024, 1024, 1024]
+        hidden_dims_d = [2048, 1024, 512, 256, 128, 64, 32, 16]
+        lr = 0.0002
+        betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        return GANEndToEndConvolutional(width=dataset_statistics.image_size[0],
+                                         height=dataset_statistics.image_size[1],
+                                         noise_dim=noise_dim,
+                                         hidden_dims_g=hidden_dims_g,
+                                         hidden_dims_d=hidden_dims_d,
+                                         lr=lr,
+                                         betas=betas,)
+
     else:
         raise ValueError()
 
@@ -126,7 +142,7 @@ if __name__ == "__main__":
     # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 10 --load-weights-from vae_fc.pt --predict-only
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-name", choices=[VAE_FC, GAN_FC], required=True)
+    parser.add_argument("--model-name", choices=[VAE_FC, GAN_FC, GAN_CV], required=True)
     parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, ALL_BOXES_IN_FLAT_32], required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--max-steps", type=int, default=None)

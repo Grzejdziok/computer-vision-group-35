@@ -39,11 +39,17 @@ class GANEndToEndFullyConnected(LightningModule):
         model_outputs = ModelOutput(rgb_with_object=image, soft_object_mask=soft_object_mask)
         return model_outputs
 
+    #pred[0] is rgb
     def loss(self, pred:Tuple[torch.Tensor, torch.Tensor], gt: torch.Tensor):
-        rgb_loss = F.binary_cross_entropy(pred[0], gt)
-        mask_loss = F.binary_cross_entropy(pred[1], gt)
+        mask_cross_entropy_loss = F.binary_cross_entropy_with_logits(pred[1],gt)
+        background_rgb_mse_loss = F.mse_loss(input=pred[0], target=gt)
+        return (mask_cross_entropy_loss+background_rgb_mse_loss)/2
+    
+    def adversarial_loss(self, pred:Tuple[torch.Tensor, torch.Tensor], gt: torch.Tensor):
+        adversarial_loss = torch.nn.BCELoss()
+        rgb_loss = adversarial_loss(pred[0], gt)
+        mask_loss = adversarial_loss(pred[1], gt)
         return (rgb_loss+mask_loss)/2
-
 
     def training_step(self, batch: TrainingSample, batch_idx: int, optimizer_idx: int) -> nn.Module:
         rgb = batch["model_input"]["rgb"]
@@ -51,41 +57,27 @@ class GANEndToEndFullyConnected(LightningModule):
         rgb_with_object = model_targets["rgb_with_object"]
         object_mask = model_targets["object_mask"].float()
 
-
         # train generator
         if optimizer_idx == 0:
-
-            # generate images
-            self.generated_imgs = self(batch)
-
-            # ground truth result (ie: all fake), put on GPU
+            # ground truth result    (ie: all fake), put on GPU
             valid = torch.ones(rgb_with_object.size(0), 1).type_as(rgb_with_object)
-
-            # adversarial loss is binary cross-entropy
-            g_loss = self.loss(self.discriminator(self.generated_imgs), valid)
-            tqdm_dict = {"g_loss": g_loss}
-            output = OrderedDict({"loss": g_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
-            return output
+            g_loss = self.adversarial_loss(self.discriminator(self(batch)), valid)
+            self.log("gen_loss", g_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+            return g_loss
 
         # train discriminator
         if optimizer_idx == 1:
-            # real
             valid = torch.ones(rgb_with_object.size(0), 1).type_as(rgb_with_object)
-            real_loss = self.loss(self.discriminator(batch), valid)
+            real_loss = self.adversarial_loss(self.discriminator(batch), valid)
 
-            # fake
-            noise_image = torch.randn(rgb_with_object.shape).type_as(rgb_with_object)
-            noise_mask = torch.randn(object_mask.shape).type_as(object_mask)
-
-            noise_dict = ModelOutput(rgb_with_object=noise_image, soft_object_mask=noise_mask)
             fake = torch.zeros(rgb_with_object.size(0), 1).type_as(rgb_with_object)
-            fake_loss = self.loss(self.discriminator(noise_dict), fake)
+            fake_loss = self.adversarial_loss(self.discriminator(self(batch)), fake)
 
             # average
             d_loss = (real_loss + fake_loss) / 2
-            tqdm_dict = {"d_loss": d_loss}
-            output = OrderedDict({"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
-            return output
+            self.log("real_loss", real_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+            self.log("fake_loss", fake_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+            return d_loss
 
     def configure_optimizers(self):
         lr = self.hparams.lr

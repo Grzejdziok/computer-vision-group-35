@@ -15,6 +15,7 @@ class ModelOutput(TypedDict):
 class ModelTarget(TypedDict):
     rgb_with_object: torch.FloatTensor
     object_mask: torch.BoolTensor
+    object_rgb: torch.FloatTensor
 
 
 class TrainingSample(TypedDict):

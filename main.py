@@ -4,6 +4,8 @@ import torch
 from datetime import datetime
 import pytorch_lightning as pl
 import torchvision
+from torchvision.ops import masks_to_boxes
+import torchvision.transforms.functional as TF
 
 from data.data_generator import DataGenerator
 from data.synthetic_data_generator import GaussianNoiseWithSquareSyntheticDataGenerator
@@ -12,6 +14,7 @@ from data.datamodule import SingleItemGenerationDataModule
 
 from models.vae_end_to_end import VAEEndToEnd
 from models.vae_utils import EncoderFullyConnected, DecoderFullyConnected
+
 from models.gan_fc_e2e import GANEndToEndFullyConnected
 import matplotlib.pyplot as plt
 
@@ -20,14 +23,19 @@ VAE_FC = "vae_fc"
 GAN_FC = "gan_fc"
 SYNTHETIC = "synthetic"
 SINGLE_ITEM_BOXES_IN_FLAT_32 = "single_item_boxes_in_flat_32"
+SINGLE_ITEM_BOXES_IN_FLAT_128 = "single_item_boxes_in_flat_128"
 ALL_BOXES_IN_FLAT_32 = "all_boxes_in_flat_32"
 
+# maybe - make the model return bounding box and high resolution mask and item
+# literature survey - "Data-Centric AI"?
 
 def get_data_generator(dataset_type: str) -> DataGenerator:
     if dataset_type == SYNTHETIC:
         return GaussianNoiseWithSquareSyntheticDataGenerator(image_size=(16, 16), num_samples=10000, square_size=7)
     elif dataset_type == SINGLE_ITEM_BOXES_IN_FLAT_32:
         return RealDataGenerator(resize=True, resize_dims=(32, 32), dataset_dir="dataset", single_item_box_only=True)
+    elif dataset_type == SINGLE_ITEM_BOXES_IN_FLAT_128:
+        return RealDataGenerator(resize=True, resize_dims=(128, 128), dataset_dir="dataset", single_item_box_only=True)
     elif dataset_type == ALL_BOXES_IN_FLAT_32:
         return RealDataGenerator(resize=True, resize_dims=(32, 32), dataset_dir="dataset", single_item_box_only=False)
     else:
@@ -39,16 +47,27 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
     dataset_statistics = datamodule.statistics
 
     if model_name == VAE_FC:
-        latent_dims = 256
-        hidden_dims = 5 * [1024]
+        model_image_size = 32
+        latent_dims = 512
+        hidden_dims = 5 * [2048]
+        #hidden_dims = [2048, 2048, 1024, 1024, 512, 512]
         lr = 1e-3
-        betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        betas = (0.9, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
 
-        encoder = EncoderFullyConnected(latent_dims, dataset_statistics.image_size[0], hidden_dims)
-        decoder = DecoderFullyConnected(latent_dims, dataset_statistics.image_size[0], hidden_dims)
+        encoder = EncoderFullyConnected(
+            latent_dims=latent_dims,
+            model_image_size=model_image_size,
+            hdim=hidden_dims,
+        )
+        decoder = DecoderFullyConnected(
+            latent_dims=latent_dims,
+            output_image_size=dataset_statistics.image_size[0],
+            model_image_size=model_image_size,
+            hdim=hidden_dims,
+        )
         preprocess_transform = torchvision.transforms.Normalize(
-            mean=dataset_statistics.mean,
-            std=dataset_statistics.std,
+            mean=(0.5, 0.5, 0.5), #dataset_statistics.mean,
+            std=(0.5, 0.5, 0.5), #dataset_statistics.std,
         )
         return VAEEndToEnd(
             encoder=encoder,
@@ -97,16 +116,27 @@ def main(model_name: str, dataset_type: str, batch_size: int, max_steps: Optiona
     rgb_gt = batch["model_input"]["rgb"].permute((0, 2, 3, 1))
     rgb_object_gt = batch["model_target"]["rgb_with_object"].permute((0, 2, 3, 1))
     mask_gt = batch["model_target"]["object_mask"]
+    object_gt = batch["model_target"]["object_rgb"].permute((0, 2, 3, 1))
     rgb_pred = outputs['rgb_with_object'].permute((0, 2, 3, 1))
     mask_pred = outputs['soft_object_mask']
 
-    fig, axes = plt.subplots(nrows=5, ncols=5, sharex=False, sharey=False)
-    for image_index, (ax1, ax2, ax3, ax4, ax5) in enumerate(axes):
+    fig, axes = plt.subplots(nrows=5, ncols=7, sharex=False, sharey=False)
+    for image_index, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) in enumerate(axes):
         ax1.imshow(rgb_gt[image_index])
         ax2.imshow(rgb_object_gt[image_index])
         ax3.imshow(mask_gt[image_index])
-        ax4.imshow(rgb_pred[image_index])
-        ax5.imshow(mask_pred[image_index])
+        ax4.imshow(object_gt[image_index])
+        ax5.imshow(rgb_pred[image_index])
+        ax6.imshow(mask_pred[image_index])
+
+        if (mask_pred[image_index] > 0.5).sum() > 0:
+            image_height = rgb_object_gt[image_index].shape[0]
+            image_width = rgb_object_gt[image_index].shape[0]
+            xmin, ymin, xmax, ymax = masks_to_boxes((mask_pred[image_index] > 0.5).float().unsqueeze(0)).int()[0]
+            object_pred = rgb_pred[image_index][ymin:ymax+1, xmin:xmax+1]
+            object_pred = TF.resize(object_pred.permute((2, 0, 1)), (image_height, image_width)).permute((1, 2, 0))
+            ax7.imshow(object_pred)
+
         ax1.get_xaxis().set_visible(False)
         ax1.get_yaxis().set_visible(False)
         ax2.get_xaxis().set_visible(False)
@@ -117,12 +147,18 @@ def main(model_name: str, dataset_type: str, batch_size: int, max_steps: Optiona
         ax4.get_yaxis().set_visible(False)
         ax5.get_xaxis().set_visible(False)
         ax5.get_yaxis().set_visible(False)
+        ax6.get_xaxis().set_visible(False)
+        ax6.get_yaxis().set_visible(False)
+        ax7.get_xaxis().set_visible(False)
+        ax7.get_yaxis().set_visible(False)
         if image_index == 0:
             ax1.set_title("RGB - input")
             ax2.set_title("RGB - target")
             ax3.set_title("Mask - target")
-            ax4.set_title("RGB - predicted")
-            ax5.set_title("Mask - predicted")
+            ax4.set_title("Object - target")
+            ax5.set_title("RGB - predicted")
+            ax6.set_title("Mask - predicted")
+            ax7.set_title("Object - predicted")
     plt.savefig("results.png")
     plt.show()
 
@@ -135,7 +171,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", choices=[VAE_FC, GAN_FC], required=True)
-    parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, ALL_BOXES_IN_FLAT_32], required=True)
+    parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, ALL_BOXES_IN_FLAT_32, SINGLE_ITEM_BOXES_IN_FLAT_128], required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--load-weights-from", required=False, default=None)

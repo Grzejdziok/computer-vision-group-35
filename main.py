@@ -44,11 +44,21 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
     if model_name == VAE_FC:
         latent_dims = 256
         hidden_dims = 5 * [1024]
+        model_image_size = 32
         lr = 1e-3
         betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
 
-        encoder = EncoderFullyConnected(latent_dims, dataset_statistics.image_size[0], hidden_dims)
-        decoder = DecoderFullyConnected(latent_dims, dataset_statistics.image_size[0], hidden_dims)
+        encoder = EncoderFullyConnected(
+            latent_dims=latent_dims,
+            input_image_size=model_image_size,
+            hdim=hidden_dims,
+        )
+        decoder = DecoderFullyConnected(
+            latent_dims=latent_dims,
+            model_output_image_size=model_image_size,
+            output_image_size=dataset_statistics.image_size[0],
+            hdim=hidden_dims,
+        )
         preprocess_transform = torchvision.transforms.Normalize(
             mean=dataset_statistics.mean,
             std=dataset_statistics.std,

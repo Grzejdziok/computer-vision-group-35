@@ -26,6 +26,7 @@ GAN_FC = "gan_fc"
 SYNTHETIC = "synthetic"
 SINGLE_ITEM_BOXES_IN_FLAT_32 = "single_item_boxes_in_flat_32"
 SINGLE_ITEM_BOXES_IN_FLAT_128 = "single_item_boxes_in_flat_128"
+SINGLE_ITEM_BOXES_IN_FLAT_256 = "single_item_boxes_in_flat_256"
 ALL_BOXES_IN_FLAT_32 = "all_boxes_in_flat_32"
 
 
@@ -36,6 +37,8 @@ def get_data_generator(dataset_type: str) -> DataGenerator:
         return RealDataGenerator(resize=True, resize_dims=(32, 32), dataset_dir="dataset", single_item_box_only=True)
     elif dataset_type == SINGLE_ITEM_BOXES_IN_FLAT_128:
         return RealDataGenerator(resize=True, resize_dims=(128, 128), dataset_dir="dataset", single_item_box_only=True)
+    elif dataset_type == SINGLE_ITEM_BOXES_IN_FLAT_256:
+        return RealDataGenerator(resize=True, resize_dims=(256, 256), dataset_dir="dataset", single_item_box_only=True)
     elif dataset_type == ALL_BOXES_IN_FLAT_32:
         return RealDataGenerator(resize=True, resize_dims=(32, 32), dataset_dir="dataset", single_item_box_only=False)
     else:
@@ -182,7 +185,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", choices=[VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64, VAE_LOCAL_FC_32, VAE_LOCAL_FC_64, GAN_FC], required=True)
-    parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, SINGLE_ITEM_BOXES_IN_FLAT_128, ALL_BOXES_IN_FLAT_32], required=True)
+    parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, SINGLE_ITEM_BOXES_IN_FLAT_128, SINGLE_ITEM_BOXES_IN_FLAT_256, ALL_BOXES_IN_FLAT_32], required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--load-weights-from", required=False, default=None)

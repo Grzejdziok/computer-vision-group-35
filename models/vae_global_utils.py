@@ -5,7 +5,7 @@ import torch.nn as nn
 import torchvision.transforms.functional as TF
 
 
-class Encoder(ABC, nn.Module):
+class EncoderGlobal(ABC, nn.Module):
 
     def forward(self, rgb_with_object: torch.Tensor, object_mask: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError()
@@ -15,16 +15,16 @@ class Encoder(ABC, nn.Module):
         raise NotImplementedError()
 
 
-class Decoder(ABC, nn.Module):
+class DecoderGlobal(ABC, nn.Module):
 
     def forward(self, z: torch.Tensor, normalized_rgb: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError()
 
 
-class EncoderFullyConnected(Encoder):
+class EncoderGlobalFullyConnected(EncoderGlobal):
 
     def __init__(self, latent_dims: int, input_image_size: int, hdim: List[int]):
-        super(EncoderFullyConnected, self).__init__()
+        super(EncoderGlobalFullyConnected, self).__init__()
 
         self.input_image_size = input_image_size
         input_dim = input_image_size**2*4
@@ -72,9 +72,9 @@ class EncoderFullyConnected(Encoder):
         return z
 
 
-class DecoderFullyConnected(Decoder):
+class DecoderGlobalFullyConnected(DecoderGlobal):
     def __init__(self, latent_dims: int, model_output_image_size: int, output_image_size: int, hdim: List[int]):
-        super(DecoderFullyConnected, self).__init__()
+        super(DecoderGlobalFullyConnected, self).__init__()
 
         rgb_embedding_dims = model_output_image_size
         common_layers = []

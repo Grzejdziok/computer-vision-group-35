@@ -5,7 +5,11 @@ from typing import Tuple, List
 import os
 import xml.etree.ElementTree as ET
 from PIL import Image
+
+import torchvision
+from torchvision.ops import masks_to_boxes
 import torchvision.transforms.functional as TF
+
 from data.training_sample import TrainingSample, ModelInput, ModelTarget
 from data.CVAT_reader import read_mask_for_image
 from data.data_generator import DataGenerator
@@ -38,19 +42,38 @@ class RealDataGenerator(DataGenerator):
                 next_rgb = Image.open(next_rgb_path).crop(crop_param)
                 if self._resize:
                     next_rgb = next_rgb.resize(self._resize_dims)
-                next_rgb_tensor = TF.to_tensor(next_rgb)
+                next_rgb_tensor = TF.to_tensor(next_rgb).float()
                 mask = read_mask_for_image(cvat_xml_root=cvat_xml_root, image_filename=next_rgb_filename, subset_name=subset_name)
 
                 if previous_rgb_tensor is not None and np.any(mask):
                     mask_pil = Image.fromarray(mask).crop(crop_param)
                     if self._resize:
                         mask_pil = mask_pil.resize(self._resize_dims, resample=Image.NEAREST)
-                    mask_tensor = TF.to_tensor(mask_pil)
+                    mask_tensor = TF.to_tensor(mask_pil).squeeze(0).bool()
+                    bounding_box_xyxy = masks_to_boxes(mask_tensor.unsqueeze(0))[0].int()
+                    xmin, ymin, xmax, ymax = bounding_box_xyxy
+
+                    normalized_bounding_box_xyxy = bounding_box_xyxy.clone().float()
+                    normalized_bounding_box_xyxy[0] /= mask_tensor.shape[1]
+                    normalized_bounding_box_xyxy[1] /= mask_tensor.shape[0]
+                    normalized_bounding_box_xyxy[2] /= mask_tensor.shape[1]
+                    normalized_bounding_box_xyxy[3] /= mask_tensor.shape[0]
+                    zoomed_object_mask = TF.resize(mask_tensor[ymin:ymax + 1, xmin:xmax + 1].unsqueeze(0).float(),
+                                                   size=self._resize_dims,
+                                                   interpolation=torchvision.transforms.InterpolationMode.NEAREST,
+                                                   ).squeeze(0).bool()
+                    zoomed_object_rgb = TF.resize(next_rgb_tensor[:, ymin:ymax + 1, xmin:xmax + 1],
+                                                  size=self._resize_dims,
+                                                  ).float()
+
                     training_sample = TrainingSample(
                         model_input=ModelInput(rgb=previous_rgb_tensor.float()),
                         model_target=ModelTarget(
-                            rgb_with_object=next_rgb_tensor.float(),
-                            object_mask=mask_tensor.squeeze(0).bool()
+                            rgb_with_object=next_rgb_tensor,
+                            object_mask=mask_tensor,
+                            normalized_bounding_box_xyxy=normalized_bounding_box_xyxy,
+                            zoomed_object_mask=zoomed_object_mask,
+                            zoomed_object_rgb=zoomed_object_rgb,
                         )
                     )
                     samples.append(training_sample)

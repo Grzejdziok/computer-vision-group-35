@@ -12,12 +12,16 @@ from data.datamodule import SingleItemGenerationDataModule
 
 from models.vae_global_end_to_end import VAEGlobalEndToEnd
 from models.vae_global_utils import EncoderGlobalFullyConnected, DecoderGlobalFullyConnected
+from models.vae_local_end_to_end import VAELocalEndToEnd
+from models.vae_local_utils import EncoderLocalFullyConnected, DecoderLocalFullyConnected
 from models.gan_fc_e2e import GANEndToEndFullyConnected
 import matplotlib.pyplot as plt
 
 
 VAE_GLOBAL_FC_32 = "vae_global_fc_32"
 VAE_GLOBAL_FC_64 = "vae_global_fc_64"
+VAE_LOCAL_FC_32 = "vae_local_fc_32"
+VAE_LOCAL_FC_64 = "vae_local_fc_64"
 GAN_FC = "gan_fc"
 SYNTHETIC = "synthetic"
 SINGLE_ITEM_BOXES_IN_FLAT_32 = "single_item_boxes_in_flat_32"
@@ -65,6 +69,35 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
             std=dataset_statistics.std,
         )
         return VAEGlobalEndToEnd(
+            encoder=encoder,
+            decoder=decoder,
+            preprocess_transform=preprocess_transform,
+            lr=lr,
+            betas=betas,
+        )
+    elif model_name in [VAE_LOCAL_FC_32, VAE_LOCAL_FC_64]:
+        latent_dims = 256
+        hidden_dims = 5 * [1024]
+        model_image_size = 32 if model_name == VAE_LOCAL_FC_32 else 64
+        lr = 1e-3
+        betas = (0.9, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+
+        encoder = EncoderLocalFullyConnected(
+            latent_dims=latent_dims,
+            input_image_size=model_image_size,
+            hdim=hidden_dims,
+        )
+        decoder = DecoderLocalFullyConnected(
+            latent_dims=latent_dims,
+            model_output_image_size=model_image_size,
+            output_image_size=dataset_statistics.image_size[0],
+            hdim=hidden_dims,
+        )
+        preprocess_transform = torchvision.transforms.Normalize(
+            mean=dataset_statistics.mean,
+            std=dataset_statistics.std,
+        )
+        return VAELocalEndToEnd(
             encoder=encoder,
             decoder=decoder,
             preprocess_transform=preprocess_transform,
@@ -148,7 +181,7 @@ if __name__ == "__main__":
     # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 10 --load-weights-from vae_fc.pt --predict-only
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-name", choices=[VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64, GAN_FC], required=True)
+    parser.add_argument("--model-name", choices=[VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64, VAE_LOCAL_FC_32, VAE_LOCAL_FC_64, GAN_FC], required=True)
     parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, SINGLE_ITEM_BOXES_IN_FLAT_128, ALL_BOXES_IN_FLAT_32], required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--max-steps", type=int, default=None)

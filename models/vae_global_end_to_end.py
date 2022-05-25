@@ -6,13 +6,13 @@ from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
 from data.training_sample import TrainingSample, ModelOutput
-from models.vae_utils import Encoder, Decoder
+from models.vae_global_utils import EncoderGlobal, DecoderGlobal
 
 
-class VAEEndToEnd(pl.LightningModule):
+class VAEGlobalEndToEnd(pl.LightningModule):
     def __init__(self,
-                 encoder: Encoder,
-                 decoder: Decoder,
+                 encoder: EncoderGlobal,
+                 decoder: DecoderGlobal,
                  preprocess_transform: torchvision.transforms.Normalize,
                  lr: float,
                  betas: Tuple[float, float],

@@ -48,14 +48,17 @@ class VAELocalEndToEnd(pl.LightningModule):
             ymin = torch.clamp(ymin, 0, image_height-1)
             ymax = torch.clamp(ymax, 0, image_height-1)
 
-            rgb_with_object[i, :, ymin:ymax+1, xmin:xmax+1] = TF.resize(
-                img=single_zoomed_object_rgb,
-                size=(ymax-ymin+1, xmax-xmin+1),
-            )
-            soft_object_mask[i, ymin:ymax+1, xmin:xmax+1] = TF.resize(
+            resized_soft_object_mask = TF.resize(
                 img=single_zoomed_soft_object_mask.float().unsqueeze(0),
                 size=(ymax-ymin+1, xmax-xmin+1),
             )[0]
+            soft_object_mask[i, ymin:ymax+1, xmin:xmax+1] = resized_soft_object_mask
+
+            rgb_with_object[i, :, ymin:ymax+1, xmin:xmax+1] *= (1. - resized_soft_object_mask)
+            rgb_with_object[i, :, ymin:ymax+1, xmin:xmax+1] += resized_soft_object_mask * TF.resize(
+                img=single_zoomed_object_rgb,
+                size=(ymax-ymin+1, xmax-xmin+1),
+            )
 
         model_outputs = ModelOutput(rgb_with_object=rgb_with_object, soft_object_mask=soft_object_mask,)
         return model_outputs

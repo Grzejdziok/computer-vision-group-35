@@ -26,7 +26,7 @@ class GeneratorFullyConnected(nn.Module):
         #From original GAN paper
         # in_features = noise_dim+np.prod(img_shape)
         self.img_shape = img_shape
-        in_features = noise_dim
+        in_features = noise_dim+np.prod(img_shape)
         def block(in_feat, out_feat, normalize=True):
             layers = [nn.Linear(in_feat, out_feat)]
             if normalize:
@@ -42,21 +42,24 @@ class GeneratorFullyConnected(nn.Module):
                 self.feature_layers+=block(in_features, hdim)
             in_features = hdim
         self.feature_extractor = nn.Sequential(*self.feature_layers)
+    
 
         self.mask_head = nn.Sequential(
             nn.Linear(hidden_dims[0], int(np.prod(img_shape[1:])))
         )
         self.image_head = nn.Sequential(
-            nn.Linear(hidden_dims[0], int(np.prod(img_shape)))
+            nn.Linear(hidden_dims[0], int(np.prod(img_shape))),
+            nn.Sigmoid()
         )
 
     def forward(self, z: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         rgb_flat = torch.flatten(rgb, start_dim=1)
-        # features = self.feature_extractor(torch.concat([z, rgb_flat], dim=1))
-        features = self.feature_extractor(z)
+        features = self.feature_extractor(torch.concat([z, rgb_flat], dim=1))
+        # features = self.feature_extractor(z)
         mask_logits = self.mask_head(features).view(-1, self.img_shape[1], self.img_shape[2])
         masks = (torch.sigmoid(mask_logits).unsqueeze(1).detach() > 0.5).float()
         image = self.image_head(features).view(-1, 3, self.img_shape[1], self.img_shape[2]) * masks + rgb * (1.-masks)
+        image = self.image_head(features).view(-1, 3, self.img_shape[1], self.img_shape[2])
         # image = self.image_head(features).view(-1, 3, self.img_shape[1], self.img_shape[2]) + rgb
 
         return image, mask_logits

@@ -52,7 +52,7 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
                                          dataset_std=dataset_statistics.std,
                                          )
     elif model_name == GAN_FC:
-        noise_dim = 32
+        noise_dim = 128
         hidden_dims_g = [2048, 1024, 512, 256, 128, 64]
         hidden_dims_d = [2048, 1024, 512, 256, 128, 64, 32, 16]
         lr = 0.0002

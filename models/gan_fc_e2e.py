@@ -59,7 +59,7 @@ class GANEndToEndFullyConnected(LightningModule):
 
         # train generator
         if optimizer_idx == 0:
-            # ground truth result    (ie: all fake), put on GPU
+            # ground truth result (ie: all fake), put on GPU
             valid = torch.ones(rgb_with_object.size(0), 1).type_as(rgb_with_object)
             g_loss = self.adversarial_loss(self.discriminator(self(batch)), valid)
             self.log("gen_loss", g_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)

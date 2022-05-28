@@ -16,7 +16,7 @@
                 "--model-name", "gan_fc",
                 "--dataset-type", "single_item_boxes_in_flat_32",
                 "--batch-size", "100",
-                "--max-steps", "300",
+                "--max-steps", "30000",
                 // "--load-weights-from", "gan_33000.pt",
                 // "--predict-only",
             ]

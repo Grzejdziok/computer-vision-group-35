@@ -26,8 +26,10 @@ class GeneratorFullyConnected(GeneratorLocal):
         rgb_embedding_dims = model_output_image_size
         in_features = noise_dim + rgb_embedding_dims
         common_layers = []
-        for h in hidden_dims[::-1]:
+        for i,h in enumerate(hidden_dims[::-1]):
             common_layers.append(nn.Linear(in_features, h))
+            if i!=0:
+                common_layers.append(nn.BatchNorm1d(h, 0.8))
             common_layers.append(nn.LeakyReLU(0.2, inplace=True))
             in_features = h
         

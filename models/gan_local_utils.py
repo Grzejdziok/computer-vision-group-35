@@ -107,5 +107,5 @@ class DiscriminatorFullyConnected(DiscriminatorLocal):
         discriminator_input = torch.concat([rgb_with_object_flat, object_mask_flat], dim=1)
         validity_image = self.feature_extractor(discriminator_input)
         validity_box = self.box_model(normalized_bounding_box_xyxy)
-        validity = validity_image+validity_box
+        validity = (validity_image+validity_box)/2
         return validity

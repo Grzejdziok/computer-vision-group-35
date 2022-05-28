@@ -18,7 +18,7 @@ from models.gan_local_end_to_end import GANEndToEndFullyConnected
 from models.gan_local_utils import GeneratorFullyConnected, DiscriminatorFullyConnected
 import matplotlib.pyplot as plt
 
-NCCL_ASYNC_ERROR_HANDLING=1
+# NCCL_ASYNC_ERROR_HANDLING=1
 VAE_GLOBAL_FC_32 = "vae_global_fc_32"
 VAE_GLOBAL_FC_64 = "vae_global_fc_64"
 VAE_LOCAL_FC_32 = "vae_local_fc_32"

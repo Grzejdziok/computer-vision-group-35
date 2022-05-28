@@ -21,18 +21,19 @@ class DiscriminatorLocal(ABC, nn.Module):
 class GeneratorFullyConnected(GeneratorLocal):
     def __init__(self, noise_dim: int, hidden_dims: List[int], img_shape: Tuple[int, int], model_output_image_size: int):
         super().__init__()
+        
         self.img_shape = img_shape
         rgb_embedding_dims = model_output_image_size
         in_features = noise_dim + rgb_embedding_dims
         common_layers = []
         for h in hidden_dims[::-1]:
             common_layers.append(nn.Linear(in_features, h))
-            common_layers.append(nn.ReLU())
+            common_layers.append(nn.LeakyReLU(0.2, inplace=True))
             in_features = h
         
         self.rgb_embedding = nn.Sequential(
             nn.Linear(np.prod(img_shape)*3, rgb_embedding_dims**2),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
             nn.Linear(rgb_embedding_dims**2, rgb_embedding_dims),
         )
 
@@ -71,7 +72,7 @@ class DiscriminatorFullyConnected(DiscriminatorLocal):
         self.img_shape = img_shape
 
         #rgb+mask
-        input_dim = 4*np.prod(img_shape) #rgb+mask+box
+        input_dim = 3*np.prod(img_shape) #rgb
         common_layers = [nn.Flatten()]
         common_layers = []
         for h in hidden_dims:
@@ -86,26 +87,18 @@ class DiscriminatorFullyConnected(DiscriminatorLocal):
         box_layers = [nn.Linear(4, 2), nn.LeakyReLU(0.2, inplace=True), nn.Linear(2, 1), nn.Sigmoid()]
         self.box_model = nn.Sequential(*box_layers)
 
-    def forward(self, zoomed_object_rgb: torch.Tensor, zoomed_object_mask: torch.Tensor, normalized_bounding_box_xyxy: torch.Tensor) -> torch.Tensor:
+    def forward(self, batch: TrainingSample) -> torch.Tensor:
+        rgb_with_object = batch['rgb_with_object']
+        object_mask = batch['soft_object_mask']
         rgb_with_object_resized = TF.resize(
-            img=zoomed_object_rgb,
+            img=rgb_with_object,
             size=(self.img_shape[0], self.img_shape[1]),
         )
         object_mask_resized = TF.resize(
-            img=zoomed_object_mask.float(),
+            img=object_mask.float(),
             size=(self.img_shape[0], self.img_shape[1]),
             interpolation=torchvision.transforms.InterpolationMode.NEAREST,
         )
-        # rgb_with_object_flat = torch.flatten(rgb_with_object_resized, start_dim=1)
-        # object_mask_flat = torch.flatten(object_mask_resized, start_dim=1)
-        # discriminator_input = torch.concat([rgb_with_object_flat, object_mask_flat, normalized_bounding_box_xyxy], dim=1)
-        # validity = self.feature_extractor(discriminator_input)
-
-        #boxes need their own validity
         rgb_with_object_flat = torch.flatten(rgb_with_object_resized, start_dim=1)
-        object_mask_flat = torch.flatten(object_mask_resized, start_dim=1)
-        discriminator_input = torch.concat([rgb_with_object_flat, object_mask_flat], dim=1)
-        validity_image = self.feature_extractor(discriminator_input)
-        validity_box = self.box_model(normalized_bounding_box_xyxy)
-        validity = validity_image+validity_box
+        validity = self.feature_extractor(rgb_with_object_flat)
         return validity

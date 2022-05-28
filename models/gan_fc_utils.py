@@ -11,15 +11,16 @@ class GeneratorFullyConnected(nn.Module):
         super().__init__()
         self.img_shape = img_shape
         common_layers = []
-        in_features = noise_dim+np.prod(img_shape)
-        for h in hidden_dims[::-1]:
-            common_layers.append(nn.Linear(in_features, h))
-            common_layers.append(nn.ReLU())
-            in_features = h
+        input_dim = noise_dim+np.prod(img_shape)
+        for hdim in hidden_dims:
+            common_layers.append(nn.Linear(input_dim, hdim))
+            common_layers.append(nn.LeakyReLU(0.2, inplace=True))
+            input_dim = hdim
+        self.feature_extractor = nn.Sequential(*self.decoder_layers)
 
         self.feature_extractor = nn.Sequential(*common_layers)
-        self.image_head = nn.Linear(in_features, np.prod(img_shape))
-        self.mask_head = nn.Linear(in_features, np.prod(img_shape[1:]))
+        self.image_head = nn.Linear(input_dim, np.prod(img_shape))
+        self.mask_head = nn.Linear(input_dim, np.prod(img_shape[1:]))
 
     def forward(self, z: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         rgb_flat = torch.flatten(rgb, start_dim=1)

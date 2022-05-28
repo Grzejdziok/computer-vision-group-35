@@ -1,0 +1,57 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "GAN-FC",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model-name", "gan_fc",
+                "--dataset-type", "single_item_boxes_in_flat_32",
+                "--batch-size", "100",
+                "--max-steps", "300",
+                // "--load-weights-from", "gan_33000.pt",
+                // "--predict-only",
+            ]
+        },
+        {
+            "name": "GAN-CV",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "--model-name", "gan_cv",
+                "--dataset-type", "single_item_boxes_in_flat_32",
+                "--batch-size", "100",
+                "--max-steps", "3000",
+                // "--load-weights-from", "vae_fc_6000_steps.pt",
+                // "--predict-only",
+            ]
+        },
+        {
+            "name": "Main-vae",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--model-name", "vae_local_fc_32",
+                "--dataset-type", "single_item_boxes_in_flat_32",
+                "--batch-size", "100",
+                "--max-steps", "300",
+                // "--load-weights-from", "vae_fc_6000_steps.pt",
+                // "--predict-only",
+            ]
+        }
+    ]
+}

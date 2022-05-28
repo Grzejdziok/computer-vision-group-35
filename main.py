@@ -14,10 +14,11 @@ from models.vae_global_end_to_end import VAEGlobalEndToEnd
 from models.vae_global_utils import EncoderGlobalFullyConnected, DecoderGlobalFullyConnected
 from models.vae_local_end_to_end import VAELocalEndToEnd
 from models.vae_local_utils import EncoderLocalFullyConnected, DecoderLocalFullyConnected
-from models.gan_fc_e2e import GANEndToEndFullyConnected
+from models.gan_local_end_to_end import GANEndToEndFullyConnected
+from models.gan_local_utils import GeneratorFullyConnected, DiscriminatorFullyConnected
 import matplotlib.pyplot as plt
 
-
+NCCL_ASYNC_ERROR_HANDLING=1
 VAE_GLOBAL_FC_32 = "vae_global_fc_32"
 VAE_GLOBAL_FC_64 = "vae_global_fc_64"
 VAE_LOCAL_FC_32 = "vae_local_fc_32"
@@ -51,7 +52,8 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
         hidden_dims = 5 * [1024]
         model_image_size = 32 if model_name == VAE_GLOBAL_FC_32 else 64
         lr = 1e-3
-        betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        betas = (0.5, 0.999)
 
         encoder = EncoderGlobalFullyConnected(
             latent_dims=latent_dims,
@@ -80,7 +82,8 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
         hidden_dims = 5 * [1024]
         model_image_size = 32 if model_name == VAE_LOCAL_FC_32 else 64
         lr = 1e-3
-        betas = (0.9, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        betas = (0.9, 0.999)
 
         encoder = EncoderLocalFullyConnected(
             latent_dims=latent_dims,
@@ -105,16 +108,34 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
             betas=betas,
         )
     elif model_name == GAN_FC:
-        noise_dim = 32
+        noise_dim = 256
         hidden_dims_g = [1024, 1024, 1024, 1024, 1024]
-        hidden_dims_d = [2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]
-        lr = 1e-2
-        betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
-        return GANEndToEndFullyConnected(width=dataset_statistics.image_size[0],
-                                         height=dataset_statistics.image_size[1],
+        hidden_dims_d = [2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2]
+        lr = 1e-3
+        # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        betas = (0.5, 0.999)
+        model_image_size = 32
+
+        generator = GeneratorFullyConnected(
+            noise_dim=noise_dim,
+            hidden_dims=hidden_dims_g,
+            img_shape=dataset_statistics.image_size,
+            model_output_image_size=model_image_size
+        )
+        discriminator = DiscriminatorFullyConnected(
+            hidden_dims=hidden_dims_d,
+            img_shape=dataset_statistics.image_size
+        )
+        preprocess_transform = torchvision.transforms.Normalize(
+            mean=dataset_statistics.mean,
+            std=dataset_statistics.std,
+        )
+        # return GANEndToEndFullyConnected(generator, discriminator, dataset_statistics.image_size[0], dataset_statistics.image_size[1], preprocess_transform, noise_dim, lr, betas)
+        return GANEndToEndFullyConnected(
+                                         generator=generator,
+                                         discriminator=discriminator,
+                                         preprocess_transform=preprocess_transform,
                                          noise_dim=noise_dim,
-                                         hidden_dims_g=hidden_dims_g,
-                                         hidden_dims_d=hidden_dims_d,
                                          lr=lr,
                                          betas=betas,)
     else:
@@ -124,7 +145,8 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
 def main(model_name: str, dataset_type: str, batch_size: int, max_steps: Optional[int], load_weights_from: Optional[str], predict_only: bool) -> None:
     assert predict_only or max_steps is not None
     data_generator = get_data_generator(dataset_type=dataset_type)
-    datamodule = SingleItemGenerationDataModule(data_generator=data_generator, batch_size=batch_size)
+    datamodule = SingleItemGenerationDataModule(
+        data_generator=data_generator, batch_size=batch_size)
     datamodule.prepare_data()
     model = get_model(model_name=model_name, datamodule=datamodule)
 
@@ -132,9 +154,12 @@ def main(model_name: str, dataset_type: str, batch_size: int, max_steps: Optiona
         model = torch.load(load_weights_from)
 
     if not predict_only:
-        trainer = pl.Trainer(max_steps=max_steps, accelerator='gpu', devices=1, enable_checkpointing=False)
-        trainer.fit(model=model, train_dataloaders=datamodule.train_dataloader())
-        torch.save(model, f"{model_name}_{str(datetime.now()).replace(':', '_')}.pt")
+        trainer = pl.Trainer(
+            max_steps=max_steps, accelerator='gpu', devices=1, enable_checkpointing=False)
+        trainer.fit(
+            model=model, train_dataloaders=datamodule.train_dataloader())
+        torch.save(
+            model, f"{model_name}_{str(datetime.now()).replace(':', '_')}.pt")
 
     batch = next(iter(datamodule.predict_dataloader()))
     model.eval()
@@ -142,7 +167,8 @@ def main(model_name: str, dataset_type: str, batch_size: int, max_steps: Optiona
         outputs = model(batch)
 
     rgb_gt = batch["model_input"]["rgb"].permute((0, 2, 3, 1))
-    rgb_object_gt = batch["model_target"]["rgb_with_object"].permute((0, 2, 3, 1))
+    rgb_object_gt = batch["model_target"]["rgb_with_object"].permute(
+        (0, 2, 3, 1))
     mask_gt = batch["model_target"]["object_mask"]
     rgb_pred = outputs['rgb_with_object'].permute((0, 2, 3, 1))
     mask_pred = outputs['soft_object_mask']
@@ -181,8 +207,10 @@ if __name__ == "__main__":
     # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 10 --load-weights-from vae_fc.pt --predict-only
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model-name", choices=[VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64, VAE_LOCAL_FC_32, VAE_LOCAL_FC_64, GAN_FC], required=True)
-    parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, SINGLE_ITEM_BOXES_IN_FLAT_128, ALL_BOXES_IN_FLAT_32], required=True)
+    parser.add_argument("--model-name", choices=[VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64,
+                        VAE_LOCAL_FC_32, VAE_LOCAL_FC_64, GAN_FC], required=True)
+    parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32,
+                        SINGLE_ITEM_BOXES_IN_FLAT_128, ALL_BOXES_IN_FLAT_32], required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--load-weights-from", required=False, default=None)

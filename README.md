@@ -10,22 +10,21 @@ In 1965 businessman and computer scientist Gordon Moore observed that the number
 More powerful hardware allows researchers to study models with increasing complexities and generally achieve better results. In recent years, however, more and more claims are being made in support of more data over more complex models. For example, Musgrave et al. [[1]](#1) show that when discounting the differences in pre-processing, evaluation metrics and choice of hyperparameters, the true accuracy of deep metric learning models has been uniform between 2006 and 2020. Similar trends are apparent in the industry as well, with Google’s Research Director Peter Norvig claiming that: “Simple models and a lot of data trump more elaborate models based on fewer data.”
 
 
-
-***
-<p align="center">
-<img src="images/trend-metric-learning.png" width="750" height="361" alt="Trends in metric learning">
-<em>Claimed and true improvements in deep metric learning since the baseline paper on contrastive loss in 2006, Musgrave et al., (2020).</em>
-</p>
-***
+<figure>
+<img src="images/trend-metric-learning.png" style="width:100%" alt="Trends in metric learning">
+<figcaption align = "center"><b>Fig. 1 - Claimed and true improvements in deep metric learning since the baseline paper on contrastive loss in 2006, Musgrave et al., (2020)</b></figcaption>
+</figure>
 
 With these trends in mind, we decided to focus on finding ways to augment existing datasets. More specifically, we consider the task of object segmentation and classification in a setting similar to a robotic stacking facility. 
 
 We start with a dataset consisting of objects in a box. We collected 250 images where a single object was placed in the box. The same object was used 10 times with different orientation and placement. Afterwards 400 images were collected of 10 boxes. These start with one image in a box and add one other object each time an image is taken. The images of the empty box were recorded too in both cases. The resulting 650 images with different object configurations and the corresponding 13 images of the empty boxes form the starting dataset. The distinction between single-object images and mulit-object ones was maintained.
 
-<p align="centre">
-<img src="images/single-object.png" width="275" height="230" alt="Single object">
-<img src="images/multi-object.png" width="275" height="230" alt="Multiple objects">
-</p>
+
+<figure>
+<img src="images/single-object.png" style="width:45%" alt="Single object">
+<img src="images/multi-object.png" style="width:45%" alt="Single object">
+<figcaption align = "center"><b>Fig. 2 - Single- and multi-box examples</b></figcaption>
+</figure>
 
 We implemented two algorithms in pursuit of expanding the dataset. A generative adversarial network (GAN) and a variational autoencoder (VAE) were used. In what follows we present and discuss each model and the results. In section 2. we describe the two ways which were adopted to encode the task as inputs and outputs to the model In section 3. we introduce our implementation of each of the two models with respect to the specifics of the task at hand. In Section 4. and Section 5. we present the results respectively for VAE and GAN. Afterwards, Section 6. will present the results of the AMT-type of experiment and Section 7. will conclude the README with the potential future directions.
 
@@ -60,10 +59,10 @@ Below is the output of the global GAN implementation, when trained on 30000 step
 
 One explanation could be that the generator was simply unable to get strong enough with the size of the current dataset. Throught Kullback-Leibler loss, VAE explicitly forces the underlying distribution to be as close to the normal distribution with the mean of 0 and variance of 1 as possible. This way, semantic features such as uniformity of colour are encoded. GAN, on the other hand, is less constrained and thus requires more data to learn the underlying distribution.
 
-<p align="center">
-<img src="images/global-gan.jpg" width="750" height="201" alt="Trends in metric learning">
-<em>Global GAN prediction</em>
-</p>
+<figure>
+<img src="images/global-gan.jpg" style="width:100%" alt="Trends in metric learning">
+<figcaption align = "center"><b>Fig. 3 - Global GAN prediction</b></figcaption>
+</figure>
 
 ### 5.2. Local GAN
 The local GAN implementation did not produce promising results either. In this case, the key issue was most certainly the convergence to a local optima. The figures below show the results after n, n and n iterations. Almost immediately, the discriminator moves the bounding box away from the centre of the frame. With each iteration, the bounding box becomes smaller, after which it eventually converges to a single pixel in one of the four corners. 
@@ -78,11 +77,11 @@ After only a few training batches, the GAN converges to a point where the genera
 
 The reason that the generator can not easily adapt is because it outputs the bounding box and the zoomed-in image separately. Improving on the zoomed-in image while the bounding box is one pixel large will not make any difference to the resulting image. In the same way, making the zoomed-in image more realistic will not fool the discriminator directly if the bounding box or the image mask is unrealistic. Therefore, improvements in all three areas need to occur at the same time, which is extremely unlikely. The generator is thus stuck in a local minima, where any small change will make the loss even larger. 
 
+<figure>
+<img src="images/local-gan.jpg" style="width:100%" alt="Local GAN results">
+<figcaption align = "center"><b>Fig. 4 - Local GAN results</b></figcaption>
+</figure>
 
-<p align="center">
-<img src="images/local-gan.jpg" width="750" height="800" alt="Local GAN results">
-<em>Local GAN results</em>
-</p>
 
 
 ## 6. Survey for VAE

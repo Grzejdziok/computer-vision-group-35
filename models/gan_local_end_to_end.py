@@ -31,6 +31,7 @@ class GANEndToEndFullyConnected(LightningModule):
         self.noise_dim = noise_dim
         self.lr = lr
         self.betas = betas
+        self.e = 0
 
     def forward(self, batch: TrainingSample) -> ModelOutput:
         # rgb = batch["model_input"]["rgb"]
@@ -138,6 +139,13 @@ class GANEndToEndFullyConnected(LightningModule):
             # plt.imshow(predicted_zoomed_object_rgb[0].permute(1,2,0).cpu().numpy())
             # plt.imshow(predicted_zoomed_object_mask_logits[0].cpu().numpy())
 
+            with torch.no_grad():
+                outputs = self(batch)
+                image = outputs['rgb_with_object']
+
+            self.e+=1
+            plt.axis('off')
+            plt.imsave(f'/home/svoloshyn/GAN/{self.e}.png', (image[0].permute(1,2,0).cpu().numpy()))
             # average
             d_loss = (real_loss + fake_loss) / 2
             self.log("real_loss", real_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)

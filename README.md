@@ -79,6 +79,12 @@ After only a few training batches, the GAN converges to a point where the genera
 The reason that the generator can not easily adapt is because it outputs the bounding box and the zoomed-in image separately. Improving on the zoomed-in image while the bounding box is one pixel large will not make any difference to the resulting image. In the same way, making the zoomed-in image more realistic will not fool the discriminator directly if the bounding box or the image mask is unrealistic. Therefore, improvements in all three areas need to occur at the same time, which is extremely unlikely. The generator is thus stuck in a local minima, where any small change will make the loss even larger. 
 
 
+<p align="center">
+<img src="images/local-gan.jpg" width="750" height="800" alt="Local GAN results">
+<em>Local GAN results</em>
+</p>
+
+
 ## 6. Survey for VAE
 
 ## 7. Future directions

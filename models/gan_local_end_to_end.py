@@ -31,6 +31,7 @@ class GANEndToEndFullyConnected(LightningModule):
         self.noise_dim = noise_dim
         self.lr = lr
         self.betas = betas
+        self.e = 0
 
     def real_batch(self, rgb: torch.Tensor, zoomed_object_rgb: torch.Tensor, zoomed_mask_logits: torch.Tensor, boxes: torch.Tensor) -> ModelOutput:
         image_height = rgb.shape[2]
@@ -142,6 +143,17 @@ class GANEndToEndFullyConnected(LightningModule):
             fake_loss = self.adversarial_loss(self.discriminator(batch_generated), fake)
             # plt.imshow(batch_real['rgb_with_object'][0].permute(1,2,0).cpu().numpy())
             # plt.imshow(batch_real['soft_object_mask'][0].cpu().numpy())
+
+            if batch_idx==1:
+                self.e+=1
+                if self.e<100 and self.e%10==0: 
+                    plt.axis('off')
+                    plt.imsave(f'intermediate/{self.e}.png', (batch_generated['rgb_with_object'][0].permute(1,2,0).cpu().numpy()))
+                elif self.e%100==0:
+                    plt.axis('off')
+                    plt.imsave(f'intermediate/{self.e}.png', (batch_generated['rgb_with_object'][0].permute(1,2,0).cpu().numpy()))
+                
+
 
             # average
             d_loss = (real_loss + fake_loss) / 2

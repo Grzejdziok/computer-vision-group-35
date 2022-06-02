@@ -109,8 +109,8 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
         )
     elif model_name == GAN_FC:
         noise_dim = 256
-        hidden_dims_g = [1024, 1024, 512, 512, 256, 256]
-        hidden_dims_d = [1024, 512, 256, 128, 64, 32, 16, 8, 4, 2]
+        hidden_dims_g = [1024, 1024, 1024, 1024, 512, 512, 256, 256]
+        hidden_dims_d = [1024,  512, 256, 128, 64, 32, 16, 8, 4, 2]
         lr = 1e-3
         # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
         betas = (0.5, 0.999)

@@ -12,11 +12,11 @@ models/gan_cv_e2e.py
 models/gan_cv_utils.py
 dataset
 gan_3000.pt
-.gitignore
 gan_fc_2022-05-28 14_28_07.878314.pt
 gan_fc_2022-05-28 14_31_05.850518.pt
 gan_33000.pt
 results_3000.png
 results_33000.png
 gan_fc_2022-05-28 15_22_59.961768.pt
-.gitignore
+intermediate
+gan_fc_2022-06-02 14_23_24.313680.pt

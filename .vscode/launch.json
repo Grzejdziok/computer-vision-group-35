@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "GAN-FC",
             "type": "python",
@@ -16,8 +17,8 @@
                 "--model-name", "gan_fc",
                 "--dataset-type", "single_item_boxes_in_flat_32",
                 "--batch-size", "100",
-                "--max-steps", "30000",
-                // "--load-weights-from", "gan_33000.pt",
+                "--max-steps", "60000",
+                // "--load-weights-from", "gan_fc_2022-06-02 06_24_33.622103.pt",
                 // "--predict-only",
             ]
         },

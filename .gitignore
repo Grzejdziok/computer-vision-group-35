@@ -4,7 +4,6 @@ lightning_logs
 .history
 __pycache__
 results.png
-images/
 masks/
 images_single_object/
 datamodule.json

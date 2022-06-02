@@ -22,7 +22,7 @@ We start with a dataset consisting of objects in a box. We collected 250 images 
 
 <figure>
 <img src="images/single-object.png" style="width:45%" alt="Single object">
-<img src="images/multi-object.png" style="width:45%" alt="Single object">
+<img src="images/multi-object.png" style="width:45%" alt="Multiple objects">
 <figcaption align = "center"><b>Fig. 2 - Single- and multi-box examples</b></figcaption>
 </figure>
 
@@ -65,7 +65,12 @@ One explanation could be that the generator was simply unable to get strong enou
 </figure>
 
 ### 5.2. Local GAN
-The local GAN implementation did not produce promising results either. In this case, the key issue was most certainly the convergence to a local optima. The figures below show the results after n, n and n iterations. Almost immediately, the discriminator moves the bounding box away from the centre of the frame. With each iteration, the bounding box becomes smaller, after which it eventually converges to a single pixel in one of the four corners. 
+The local GAN implementation did not produce promising results either. In this case, the key issue was most certainly the convergence to a local optima. The figures below show the generated image based on a model trained for some number of epochs. Almost immediately, the discriminator moves the bounding box away from the centre of the frame. With each iteration, the bounding box becomes smaller, after which it eventually converges to a single pixel in one of the four corners. 
+
+<figure>
+<img src="images/local-gan.jpg" style="width:100%" alt="Local GAN results">
+<figcaption align = "center"><b>Fig. 4 - Local GAN results</b></figcaption>
+</figure>
 
 This happens because at the beginning the bounding box is filled with randomly initialized RGB values. Because the ground truths never contain a perfectly straight gray rectangle, the discriminator has no trouble identifying the fake images. 
 
@@ -76,13 +81,6 @@ Because the real objects typically take up only a small portion of the box, the 
 After only a few training batches, the GAN converges to a point where the generator outputs empty boxes and the generator is learning to discriminate. Some time later, the discriminator learns to identify empty boxes as fake samples, but the generator can not easily change what it produces. This causes the generator loss to steadily increase, identifying a GAN failure. 
 
 The reason that the generator can not easily adapt is because it outputs the bounding box and the zoomed-in image separately. Improving on the zoomed-in image while the bounding box is one pixel large will not make any difference to the resulting image. In the same way, making the zoomed-in image more realistic will not fool the discriminator directly if the bounding box or the image mask is unrealistic. Therefore, improvements in all three areas need to occur at the same time, which is extremely unlikely. The generator is thus stuck in a local minima, where any small change will make the loss even larger. 
-
-<figure>
-<img src="images/local-gan.jpg" style="width:100%" alt="Local GAN results">
-<figcaption align = "center"><b>Fig. 4 - Local GAN results</b></figcaption>
-</figure>
-
-
 
 ## 6. Survey for VAE
 

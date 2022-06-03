@@ -15,6 +15,9 @@ from models.vae_global_utils import EncoderGlobalFullyConnected, DecoderGlobalFu
 from models.vae_local_end_to_end import VAELocalEndToEnd
 from models.vae_local_utils import EncoderLocalFullyConnected, DecoderLocalFullyConnected, EncoderLocalConvolutional, DecoderLocalConvolutional
 from models.gan_fc_e2e import GANEndToEndFullyConnected
+
+from callbacks.loss_reporter_callback import LossReporterCallback
+
 import matplotlib.pyplot as plt
 
 
@@ -170,10 +173,17 @@ def main(model_name: str,
         model = torch.load(load_weights_from)
 
     if not predict_only:
-        trainer = pl.Trainer(max_steps=max_steps, accelerator='gpu', devices=1, enable_checkpointing=False)
-        trainer.fit(model=model, train_dataloaders=datamodule.train_dataloader())
+        loss_reporter_callback = LossReporterCallback()
+        trainer = pl.Trainer(max_steps=max_steps, accelerator='gpu', devices=1, enable_checkpointing=False, callbacks=[loss_reporter_callback], num_sanity_val_steps=0,)
+        trainer.fit(model=model, datamodule=datamodule)
         torch.save(model, f"{model_name}_{str(datetime.now()).replace(':', '_')}.pt")
 
+        # plot losses
+        plt.clf()
+        loss_reporter_callback.plot_and_save_losses("losses.png")
+        plt.show()
+
+    # plot predictions
     num_predictions = 5
     model.eval()
     fig, axes = plt.subplots(nrows=num_predictions, ncols=5, sharex=False, sharey=False)
@@ -199,7 +209,7 @@ def main(model_name: str,
                 ax.set_title(title)
             ax.imshow(img)
 
-    plt.savefig("results.png")
+    plt.savefig("visualizations.png")
     plt.show()
 
 
@@ -208,6 +218,8 @@ if __name__ == "__main__":
     # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 100 --max-steps 30000
     # python main.py --model-name gan_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 30 --max-steps 10000
     # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 10 --load-weights-from vae_fc.pt --predict-only
+    #
+    # survey usage: python main.py --model-name vae_local_fc_64 --dataset-type all_boxes_in_flat_256 --batch-size 100 --max-steps 20000
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", choices=[VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64, VAE_LOCAL_FC_32, VAE_LOCAL_FC_64, VAE_LOCAL_CONV_4x, GAN_FC], required=True)

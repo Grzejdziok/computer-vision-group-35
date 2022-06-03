@@ -45,7 +45,7 @@ class SingleItemGenerationDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         assert self._test_dataset is not None
-        return DataLoader(self._test_dataset, batch_size=1, shuffle=False)
+        return DataLoader(self._test_dataset, batch_size=self._batch_size, shuffle=False)
 
     def test_dataloader(self):
         assert self._test_dataset is not None

@@ -174,40 +174,31 @@ def main(model_name: str,
         trainer.fit(model=model, train_dataloaders=datamodule.train_dataloader())
         torch.save(model, f"{model_name}_{str(datetime.now()).replace(':', '_')}.pt")
 
-    batch = next(iter(datamodule.predict_dataloader()))
+    num_predictions = 5
     model.eval()
-    with torch.no_grad():
-        outputs = model(batch)
+    fig, axes = plt.subplots(nrows=num_predictions, ncols=5, sharex=False, sharey=False)
+    for i, (batch, axes_cols) in enumerate(zip(datamodule.predict_dataloader(), axes)):
 
-    rgb_gt = batch["model_input"]["rgb"].permute((0, 2, 3, 1))
-    rgb_object_gt = batch["model_target"]["rgb_with_object"].permute((0, 2, 3, 1))
-    mask_gt = batch["model_target"]["object_mask"]
-    rgb_pred = outputs['rgb_with_object'].permute((0, 2, 3, 1))
-    mask_pred = outputs['soft_object_mask']
+        with torch.no_grad():
+            outputs = model(batch)
 
-    fig, axes = plt.subplots(nrows=5, ncols=5, sharex=False, sharey=False)
-    for image_index, (ax1, ax2, ax3, ax4, ax5) in enumerate(axes):
-        ax1.imshow(rgb_gt[image_index])
-        ax2.imshow(rgb_object_gt[image_index])
-        ax3.imshow(mask_gt[image_index])
-        ax4.imshow(rgb_pred[image_index])
-        ax5.imshow(mask_pred[image_index])
-        ax1.get_xaxis().set_visible(False)
-        ax1.get_yaxis().set_visible(False)
-        ax2.get_xaxis().set_visible(False)
-        ax2.get_yaxis().set_visible(False)
-        ax3.get_xaxis().set_visible(False)
-        ax3.get_yaxis().set_visible(False)
-        ax4.get_xaxis().set_visible(False)
-        ax4.get_yaxis().set_visible(False)
-        ax5.get_xaxis().set_visible(False)
-        ax5.get_yaxis().set_visible(False)
-        if image_index == 0:
-            ax1.set_title("RGB - input")
-            ax2.set_title("RGB - target")
-            ax3.set_title("Mask - target")
-            ax4.set_title("RGB - predicted")
-            ax5.set_title("Mask - predicted")
+        rgb_gt = batch["model_input"]["rgb"][0].permute((1, 2, 0))  # make channels last
+        rgb_object_gt = batch["model_target"]["rgb_with_object"][0].permute((1, 2, 0))  # make channels last
+        mask_gt = batch["model_target"]["object_mask"][0]
+        rgb_pred = outputs['rgb_with_object'][0].permute((1, 2, 0))  # make channels last
+        mask_pred = outputs['soft_object_mask'][0]
+
+        for ax in axes_cols:
+            ax.get_xaxis().set_visible(False)
+            ax.get_yaxis().set_visible(False)
+
+        titles = ["RGB - input", "RGB - target", "Mask - target", "RGB - predicted", "Mask - predicted"]
+        imgs = [rgb_gt, rgb_object_gt, mask_gt, rgb_pred, mask_pred]
+        for ax, title, img in zip(axes_cols, titles, imgs):
+            if i == 0:
+                ax.set_title(title)
+            ax.imshow(img)
+
     plt.savefig("results.png")
     plt.show()
 

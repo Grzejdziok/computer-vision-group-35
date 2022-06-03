@@ -67,39 +67,42 @@ class VAELocalEndToEnd(pl.LightningModule):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr, betas=self.betas, weight_decay=1e-5)
         return optimizer
 
-    def training_step(self, batch: TrainingSample, batch_idx: int) -> nn.Module:
+    def _inner_training_step(self, batch: TrainingSample, prefix_metrics: str, augment: bool, prog_bar: bool) -> torch.Tensor:
         rgb = batch["model_input"]["rgb"]
         model_targets = batch["model_target"]
         zoomed_object_rgb = model_targets["zoomed_object_rgb"]
         zoomed_object_mask = model_targets["zoomed_object_mask"]
         normalized_bounding_box_xyxy = model_targets["normalized_bounding_box_xyxy"]
 
-        for i in range(rgb.shape[0]):
-            if torch.rand(1) < 0.5:
-                rgb[i] = TF.hflip(rgb[i])
-                zoomed_object_rgb[i] = TF.hflip(zoomed_object_rgb[i])
-                zoomed_object_mask[i] = TF.hflip(zoomed_object_mask[i])
-                normalized_bounding_box_xyxy[i] = torch.tensor([
-                    1. - normalized_bounding_box_xyxy[i][2],
-                    normalized_bounding_box_xyxy[i][1],
-                    1. - normalized_bounding_box_xyxy[i][0],
-                    normalized_bounding_box_xyxy[i][3],
-                ],)
-            if torch.rand(1) < 0.5:
-                rgb[i] = TF.vflip(rgb[i])
-                zoomed_object_rgb[i] = TF.vflip(zoomed_object_rgb[i])
-                zoomed_object_mask[i] = TF.vflip(zoomed_object_mask[i])
-                normalized_bounding_box_xyxy[i] = torch.tensor([
-                    normalized_bounding_box_xyxy[i][0],
-                    1. - normalized_bounding_box_xyxy[i][3],
-                    normalized_bounding_box_xyxy[i][2],
-                    1. - normalized_bounding_box_xyxy[i][1],
-                ], )
+        if augment:
+            for i in range(rgb.shape[0]):
+                if torch.rand(1) < 0.5:
+                    rgb[i] = TF.hflip(rgb[i])
+                    zoomed_object_rgb[i] = TF.hflip(zoomed_object_rgb[i])
+                    zoomed_object_mask[i] = TF.hflip(zoomed_object_mask[i])
+                    normalized_bounding_box_xyxy[i] = torch.tensor([
+                        1. - normalized_bounding_box_xyxy[i][2],
+                        normalized_bounding_box_xyxy[i][1],
+                        1. - normalized_bounding_box_xyxy[i][0],
+                        normalized_bounding_box_xyxy[i][3],
+                    ], )
+                if torch.rand(1) < 0.5:
+                    rgb[i] = TF.vflip(rgb[i])
+                    zoomed_object_rgb[i] = TF.vflip(zoomed_object_rgb[i])
+                    zoomed_object_mask[i] = TF.vflip(zoomed_object_mask[i])
+                    normalized_bounding_box_xyxy[i] = torch.tensor([
+                        normalized_bounding_box_xyxy[i][0],
+                        1. - normalized_bounding_box_xyxy[i][3],
+                        normalized_bounding_box_xyxy[i][2],
+                        1. - normalized_bounding_box_xyxy[i][1],
+                    ], )
 
         z = self.encoder(normalized_bounding_box_xyxy, zoomed_object_mask, zoomed_object_rgb)
 
         preprocessed_rgb = self.preprocess_transform(rgb)
-        predicted_zoomed_object_rgb, predicted_zoomed_object_mask_logits, predicted_boxes = self.decoder(z, preprocessed_rgb, rgb)
+        predicted_zoomed_object_rgb, predicted_zoomed_object_mask_logits, predicted_boxes = self.decoder(z,
+                                                                                                         preprocessed_rgb,
+                                                                                                         rgb)
         mask_cross_entropy_loss = F.binary_cross_entropy_with_logits(
             input=predicted_zoomed_object_mask_logits,
             target=zoomed_object_mask.float(),
@@ -113,9 +116,18 @@ class VAELocalEndToEnd(pl.LightningModule):
             target=normalized_bounding_box_xyxy,
         )
         loss = mask_cross_entropy_loss + self.encoder.kl + 10. * object_rgb_mse_loss + 10. * box_loss
-        self.log("ce_loss", mask_cross_entropy_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-        self.log("box_loss", box_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-        self.log("object_mse", object_rgb_mse_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-        self.log("vae_kl_loss", self.encoder.kl, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+
+        self.log("_".join([prefix_metrics, "ce_loss"]), mask_cross_entropy_loss, on_step=False, on_epoch=True, prog_bar=prog_bar, logger=True)
+        self.log("_".join([prefix_metrics, "box_loss"]), box_loss, on_step=False, on_epoch=True, prog_bar=prog_bar, logger=True)
+        self.log("_".join([prefix_metrics, "object_mse"]), object_rgb_mse_loss, on_step=False, on_epoch=True, prog_bar=prog_bar, logger=True)
+        self.log("_".join([prefix_metrics, "vae_kl_loss"]), self.encoder.kl, on_step=False, on_epoch=True, prog_bar=prog_bar, logger=True)
         return loss
 
+    def training_step(self, batch: TrainingSample, batch_idx: int) -> torch.Tensor:
+        loss = self._inner_training_step(batch, "train", augment=True, prog_bar=True)
+        return loss
+
+    def validation_step(self, batch: TrainingSample, batch_idx: int) -> torch.Tensor:
+        val_loss = self._inner_training_step(batch, prefix_metrics="val", augment=False, prog_bar=False)
+        self.log("val_loss", val_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        return val_loss

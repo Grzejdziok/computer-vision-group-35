@@ -1,3 +1,4 @@
+import hashlib
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -13,32 +14,46 @@ class SingleItemGenerationDataModule(pl.LightningDataModule):
     def __init__(self,
                  data_generator: DataGenerator,
                  batch_size: int,
+                 test_ratio: float,
                  ):
         super().__init__()
         self._data_generator = data_generator
         self._batch_size = batch_size
-        self._dataset = None
+        self._train_dataset = None  # lazy-loaded
+        self._test_dataset = None  # lazy-loaded
         self._statistics = None  # lazy-loaded
+        self._test_ratio = test_ratio
+
+    def _is_test_sample(self, training_sample: TrainingSample) -> bool:
+        if self._test_ratio > 0.:
+            sample_id_hash = int(hashlib.sha256(training_sample["sample_id"].encode('utf-8')).hexdigest(), 16) % 10**8
+            return sample_id_hash % (1. / self._test_ratio) < 1
+        else:
+            return False
 
     def prepare_data(self):
-        generated_data = self._data_generator.generate()
-        self._dataset = ListDataset(generated_data)
+        if self._train_dataset is None or self._test_dataset is None:
+            generated_data = self._data_generator.generate()
+            train_data = list(filter(lambda sample: not self._is_test_sample(sample), generated_data))
+            test_data = list(filter(lambda sample: self._is_test_sample(sample), generated_data))
+            self._train_dataset = ListDataset(train_data)
+            self._test_dataset = ListDataset(test_data)
 
     def train_dataloader(self):
-        assert self._dataset is not None
-        return DataLoader(self._dataset, batch_size=self._batch_size, shuffle=True)
+        assert self._train_dataset is not None
+        return DataLoader(self._train_dataset, batch_size=self._batch_size, shuffle=True)
 
     def val_dataloader(self):
-        assert self._dataset is not None
-        return DataLoader(self._dataset, batch_size=self._batch_size, shuffle=False)
+        assert self._test_dataset is not None
+        return DataLoader(self._test_dataset, batch_size=self._batch_size, shuffle=False)
 
     def test_dataloader(self):
-        assert self._dataset is not None
-        return DataLoader(self._dataset, batch_size=self._batch_size, shuffle=False)
+        assert self._test_dataset is not None
+        return DataLoader(self._test_dataset, batch_size=self._batch_size, shuffle=False)
 
     def predict_dataloader(self):
-        assert self._dataset is not None
-        return DataLoader(self._dataset, batch_size=self._batch_size, shuffle=True)
+        assert self._test_dataset is not None
+        return DataLoader(self._test_dataset, batch_size=self._batch_size, shuffle=True)
 
     @property
     def statistics(self) -> DatasetStatistics:

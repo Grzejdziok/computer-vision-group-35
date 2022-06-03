@@ -152,10 +152,17 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
         raise ValueError()
 
 
-def main(model_name: str, dataset_type: str, batch_size: int, max_steps: Optional[int], load_weights_from: Optional[str], predict_only: bool) -> None:
+def main(model_name: str,
+         dataset_type: str,
+         batch_size: int,
+         max_steps: Optional[int],
+         load_weights_from: Optional[str],
+         predict_only: bool,
+         test_ratio: float,
+         ) -> None:
     assert predict_only or max_steps is not None
     data_generator = get_data_generator(dataset_type=dataset_type)
-    datamodule = SingleItemGenerationDataModule(data_generator=data_generator, batch_size=batch_size)
+    datamodule = SingleItemGenerationDataModule(data_generator=data_generator, batch_size=batch_size, test_ratio=test_ratio)
     datamodule.prepare_data()
     model = get_model(model_name=model_name, datamodule=datamodule)
 
@@ -218,6 +225,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--load-weights-from", required=False, default=None)
     parser.add_argument("--predict-only", action="store_true", default=False)
+    parser.add_argument("--test-ratio", type=float, default=0.1)
     args = parser.parse_args()
 
     main(model_name=args.model_name,
@@ -226,4 +234,5 @@ if __name__ == "__main__":
          predict_only=args.predict_only,
          batch_size=args.batch_size,
          max_steps=args.max_steps,
+         test_ratio=args.test_ratio,
          )

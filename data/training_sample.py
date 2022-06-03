@@ -23,3 +23,4 @@ class ModelTarget(TypedDict):
 class TrainingSample(TypedDict):
     model_input: ModelInput
     model_target: ModelTarget
+    sample_id: str

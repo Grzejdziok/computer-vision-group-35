@@ -74,7 +74,8 @@ class RealDataGenerator(DataGenerator):
                             normalized_bounding_box_xyxy=normalized_bounding_box_xyxy,
                             zoomed_object_mask=zoomed_object_mask,
                             zoomed_object_rgb=zoomed_object_rgb,
-                        )
+                        ),
+                        sample_id=next_rgb_path,
                     )
                     samples.append(training_sample)
                 if re.match("single_item_box_\d", subset_name):

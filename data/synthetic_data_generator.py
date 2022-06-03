@@ -1,4 +1,5 @@
 from typing import Tuple, List
+import uuid
 
 import torch
 import torchvision.transforms
@@ -53,7 +54,8 @@ class GaussianNoiseWithSquareSyntheticDataGenerator(DataGenerator):
                     normalized_bounding_box_xyxy=normalized_bounding_box_xyxy,
                     zoomed_object_mask=zoomed_object_mask,
                     zoomed_object_rgb=zoomed_object_rgb,
-                )
+                ),
+                sample_id=str(uuid.uuid4()),
             )
             training_samples.append(training_sample)
 

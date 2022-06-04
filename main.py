@@ -1,3 +1,5 @@
+import os
+import shutil
 from typing import Optional
 import argparse
 import torch
@@ -162,6 +164,7 @@ def main(model_name: str,
          load_weights_from: Optional[str],
          predict_only: bool,
          test_ratio: float,
+         generate_survey_images: bool,
          ) -> None:
     assert predict_only or max_steps is not None
     data_generator = get_data_generator(dataset_type=dataset_type)
@@ -212,6 +215,26 @@ def main(model_name: str,
     plt.savefig("visualizations.png")
     plt.show()
 
+    if generate_survey_images:
+        directory = "survey_images"
+        if os.path.exists(directory):
+            shutil.rmtree(directory)
+        os.makedirs(directory)
+
+        model.eval()
+        for i, batch in enumerate(datamodule.predict_dataloader()):
+            assert batch["model_target"]["rgb_with_object"].shape[0] == 1
+            with torch.no_grad():
+                outputs = model(batch)
+
+            path_real = os.path.join(directory, f"{i}_real.png")
+            rgb_object_gt = batch["model_target"]["rgb_with_object"][0]
+            torchvision.utils.save_image(rgb_object_gt, path_real)
+
+            path_fake = os.path.join(directory, f"{i}_fake.png")
+            rgb_pred = outputs['rgb_with_object'][0]
+            torchvision.utils.save_image(rgb_pred, path_fake)
+
 
 if __name__ == "__main__":
     # example usage:
@@ -228,6 +251,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-steps", type=int, default=None)
     parser.add_argument("--load-weights-from", required=False, default=None)
     parser.add_argument("--predict-only", action="store_true", default=False)
+    parser.add_argument("--generate-survey-images", action="store_true", default=False)
     parser.add_argument("--test-ratio", type=float, default=0.1)
     args = parser.parse_args()
 
@@ -238,4 +262,5 @@ if __name__ == "__main__":
          batch_size=args.batch_size,
          max_steps=args.max_steps,
          test_ratio=args.test_ratio,
+         generate_survey_images=args.generate_survey_images,
          )

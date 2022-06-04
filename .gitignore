@@ -12,3 +12,9 @@ models/gan_cv_utils.py
 dataset
 intermediate
 *.pt
+survey_images
+epochs.npy
+train_losses.npy
+val_losses.npy
+visualizations.png
+losses.png

@@ -20,11 +20,13 @@ With these trends in mind, we decided to focus on finding ways to augment existi
 We start with a dataset consisting of objects in a box. We collected 250 images where a single object was placed in the box. The same object was used 10 times with different orientation and placement. Afterwards 400 images were collected of 10 boxes. These start with one image in a box and add one other object each time an image is taken. The images of the empty box were recorded too in both cases. The resulting 650 images with different object configurations and the corresponding 13 images of the empty boxes form the starting dataset. The distinction between single-object images and mulit-object ones was maintained.
 
 
-<figure>
+<p align="middle">
 <img src="images/single-object.png" style="width:45%" alt="Single object">
 <img src="images/multi-object.png" style="width:45%" alt="Multiple objects">
-<figcaption align = "center"><b>Fig. 2 - Single- and multi-box examples</b></figcaption>
-</figure>
+<br>
+<b>Fig. 2 - Single- and multi-item examples</b>
+</p>
+
 
 We implemented two algorithms in pursuit of expanding the dataset. A generative adversarial network (GAN) and a variational autoencoder (VAE) were used. In what follows we present and discuss each model and the results. In section 2. we describe the two ways which were adopted to encode the task as inputs and outputs to the model In section 3. we introduce our implementation of each of the two models with respect to the specifics of the task at hand. In Section 4. and Section 5. we present the results respectively for VAE and GAN. Afterwards, Section 6. will present the results of the AMT-type of experiment and Section 7. will conclude the README with the potential future directions.
 

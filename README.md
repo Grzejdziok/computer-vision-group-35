@@ -15,22 +15,34 @@ More powerful hardware allows researchers to study models with increasing comple
 <figcaption align = "center"><b>Fig. 1 - Claimed and true improvements in deep metric learning since the baseline paper on contrastive loss in 2006, Musgrave et al., (2020)</b></figcaption>
 </figure>
 
-With these trends in mind, we decided to focus on finding ways to augment existing datasets. More specifically, we consider the task of object segmentation and classification in a setting similar to a robotic stacking facility. 
+With these trends in mind, we decided to focus on finding ways to augment existing datasets. More specifically, we consider the task of object segmentation in a setting similar to a robotic stacking facility where a camera looks straight from the above to a box filled with items to pick.
 
-We start with a dataset consisting of objects in a box. We collected 250 images where a single object was placed in the box. The same object was used 10 times with different orientation and placement. Afterwards 400 images were collected of 10 boxes. These start with one image in a box and add one other object each time an image is taken. The images of the empty box were recorded too in both cases. The resulting 650 images with different object configurations and the corresponding 13 images of the empty boxes form the starting dataset. The distinction between single-object images and mulit-object ones was maintained.
+We start with a dataset consisting of objects in a box. Using a smartphone camera, we collected 250 images where a single object was placed in the box. The same object was used 10 times with different orientation and placement. Afterwards 400 images were collected of 10 boxes. These start with one image in a box and add one other object each time an image is taken. The images of the empty box were recorded too in both cases. The resulting 650 images with different object configurations and the corresponding 13 images of the empty boxes form the starting dataset. The distinction between single-object images and multi-object ones was maintained.
 
+<p align="middle">
+<img src="images/data-collection.jpg" style="width:75%" alt="Data collection">
+<br>
+<b>Fig. 2 - data collection setup</b>
+</p>
 
 <p align="middle">
 <img src="images/single-object.png" style="width:45%" alt="Single object">
 <img src="images/multi-object.png" style="width:45%" alt="Multiple objects">
 <br>
-<b>Fig. 2 - Single- and multi-item examples</b>
+<b>Fig. 3 - Single- and multi-item examples</b>
 </p>
 
+The task we want to solve is framed as follows: given an image of a cardboard box with or without items, generate a new item in the image. The top-view diagram for this task is:
+
+<p align="middle">
+<img src="images/diagram.jpg" style="width:100%" alt="Diagram">
+<br>
+<b>Fig. 4 - high-level diagram for our method</b>
+</p>
 
 We implemented two algorithms in pursuit of expanding the dataset. A generative adversarial network (GAN) and a variational autoencoder (VAE) were used. In what follows we present and discuss each model and the results. In section 2. we describe the two ways which were adopted to encode the task as inputs and outputs to the model In section 3. we introduce our implementation of each of the two models with respect to the specifics of the task at hand. In Section 4. and Section 5. we present the results respectively for VAE and GAN. Afterwards, Section 6. will present the results of the AMT-type of experiment and Section 7. will conclude the README with the potential future directions.
 
-## 2. Local and Global Views
+## 2. Input-output encoding
 
 ## 3. Algorithms
 

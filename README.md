@@ -32,7 +32,7 @@ We start with a dataset consisting of objects in a box. Using a smartphone camer
 <b>Fig. 3 - Single- and multi-item examples</b>
 </p>
 
-The task we want to solve is framed as follows: given an image of a cardboard box with or without items, generate a new item in the image. The top-view diagram for this task is:
+The task we want to solve is framed as follows: given an image of a cardboard box with or without items, generate a new item in the image along with its binary mask. The top-view diagram for this task is:
 
 <p align="middle">
 <img src="images/diagram.jpg" style="width:100%" alt="Diagram">
@@ -40,14 +40,47 @@ The task we want to solve is framed as follows: given an image of a cardboard bo
 <b>Fig. 4 - high-level diagram for our method</b>
 </p>
 
-We implemented two algorithms in pursuit of expanding the dataset. A generative adversarial network (GAN) and a variational autoencoder (VAE) were used. In what follows we present and discuss each model and the results. In section 2. we describe the two ways which were adopted to encode the task as inputs and outputs to the model In section 3. we introduce our implementation of each of the two models with respect to the specifics of the task at hand. In Section 4. and Section 5. we present the results respectively for VAE and GAN. Afterwards, Section 6. will present the results of the AMT-type of experiment and Section 7. will conclude the README with the potential future directions.
+We implemented two algorithms using the [pytorch-lightning](https://www.pytorchlightning.ai/) framework in pursuit of expanding the dataset. A generative adversarial network (GAN) and a variational autoencoder (VAE) were used. In what follows we present and discuss each model and the results. In section 2. we describe the two ways which were adopted to encode the task as inputs and outputs to the model In section 3. we introduce our implementation of each of the two models with respect to the specifics of the task at hand. In Section 4. and Section 5. we present the results respectively for VAE and GAN. Afterwards, Section 6. will present the results of the AMT-type of experiment and Section 7. will conclude the README with the potential future directions.
 
 ## 2. Input-output encoding
+
+A proper input-output encoding is a critical design choice for each computer vision architecture. We experimented with 
+several ways of doing it, with two of which we were able to produce reasonable results with at least one of analyzed
+architectures. We call these two encoding methods "global view encoding" and "local view encoding" respectively.
+
+### 2.1 Global view encoding
+With global view encoding, we train the model to generate the whole image with a new item and image-level item mask.
+Example output is:
+
+<p align="middle">
+<img src="images/global_view.jpg" style="width:100%" alt="Global view encoding example">
+</p>
+
+The advantages of this encoding method are its simplicity and the possibility for a model to modify all parts of the 
+image that can be affected by adding a new item, e.g. shadows or item folding. The disadvantage is that the model has
+to learn to generate large amount of pixels that are irrelevant for addition of a new item. It means that in order 
+to achieve a good resolution of a generated item, the model has to compute-intensive because it has to generate the 
+whole image in this resolution, not only the item.
+
+### 2.1 Local view encoding
+
+The local view encoding is designed to be less compute-intensive than the global view encoding. It uses the fact that
+the most pixels of the image is irrelevant for adding a new item and it may be enough to generate only the pixels of
+the item. This can be achieved by training the model to generate three outputs: "zoomed" object image, "zoomed" object 
+mask, and object bounding box. These outputs are then combined with the input image to paste the generated object on it.
+This is shown in the below diagram:
+
+<p align="middle">
+<img src="images/local_view.jpg" style="width:100%" alt="Global view encoding example">
+</p>
+
+The advantage of this encoding is that it is more scalable and lets us vary generated object resolution independently of
+the image resolution. The disadvantage is that it 
 
 ## 3. Algorithms
 
 ### 3.1 VAE algorithm
-
+-
 ### 3.2 GAN algorithm
 
 Two versions of GAN were attempted: convolutional and fully-connected. Based off the success of VAE, the fully-connected model was prioritized. The basis for the underlying generator and discriminator models was extracted from the original research paper introducing GAN by Ian Goodfellow [[2]](#2). 

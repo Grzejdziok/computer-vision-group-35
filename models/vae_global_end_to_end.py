@@ -1,7 +1,6 @@
 from typing import Tuple
 import torch
 import torchvision
-import torchvision.transforms.functional as TF
 from torch import nn
 import pytorch_lightning as pl
 import torch.nn.functional as F
@@ -42,16 +41,6 @@ class VAEGlobalEndToEnd(pl.LightningModule):
         model_targets = batch["model_target"]
         rgb_with_object = model_targets["rgb_with_object"]
         object_mask = model_targets["object_mask"]
-
-        for i in range(rgb.shape[0]):
-            if torch.rand(1) < 0.5:
-                rgb[i] = TF.hflip(rgb[i])
-                rgb_with_object[i] = TF.hflip(rgb_with_object[i])
-                object_mask[i] = TF.hflip(object_mask[i])
-            if torch.rand(1) < 0.5:
-                rgb[i] = TF.vflip(rgb[i])
-                rgb_with_object[i] = TF.vflip(rgb_with_object[i])
-                object_mask[i] = TF.vflip(object_mask[i])
 
         preprocessed_rgb_with_object = self.preprocess_transform(rgb_with_object)
         z = self.encoder(preprocessed_rgb_with_object, object_mask)

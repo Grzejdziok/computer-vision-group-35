@@ -88,11 +88,11 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
             betas=betas,
         )
     elif model_name in [VAE_LOCAL_FC_32, VAE_LOCAL_FC_64]:
-        latent_dims = 256
+        latent_dims = 1024
         hidden_dims = 5 * [1024]
         model_image_size = 32 if model_name == VAE_LOCAL_FC_32 else 64
         lr = 1e-3
-        betas = (0.9, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        betas = (0.9, 0.999)
         encoder = EncoderLocalFullyConnected(
             latent_dims=latent_dims,
             input_image_size=model_image_size,
@@ -119,7 +119,7 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
         latent_dims = 256
         hidden_channels_per_block = [[32, 32], [64, 64], [128, 128], [256, 256]]
         lr = 1e-3
-        betas = (0.9, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
+        betas = (0.9, 0.999)
         encoder = EncoderLocalConvolutional(
             hidden_channels_per_block=hidden_channels_per_block,
             latent_dims=latent_dims,

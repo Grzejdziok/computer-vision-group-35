@@ -33,6 +33,7 @@ class EncoderLocalFullyConnected(EncoderLocal):
         common_layers = [nn.Flatten()]
         for h in hdim:
             common_layers.append(nn.Linear(input_dim, h))
+            common_layers.append(nn.BatchNorm1d(h))
             common_layers.append(nn.ReLU())
             input_dim = h
 
@@ -83,30 +84,37 @@ class EncoderLocalFullyConnected(EncoderLocal):
 
 class DecoderLocalFullyConnected(DecoderLocal):
 
-    def __init__(self, latent_dims: int, model_output_image_size: int, output_image_size: int, hdim: List[int]):
+    def __init__(self, latent_dims: int, model_output_image_size: int, output_image_size: int, hdim: List[int], rgb_embedding_dims: int = 0):
         super(DecoderLocalFullyConnected, self).__init__()
 
-        rgb_embedding_dims = model_output_image_size
         common_layers = []
         in_features = latent_dims + rgb_embedding_dims
         for h in hdim[::-1]:
             common_layers.append(nn.Linear(in_features, h))
+            common_layers.append(nn.BatchNorm1d(h))
+            common_layers.append(nn.Dropout(0.1))
             common_layers.append(nn.ReLU())
             in_features = h
 
-        resnet18 = torchvision.models.resnet18(pretrained=True)
-        resnet18.fc = nn.Identity()
-        resnet18.requires_grad_(False)
-        self.rgb_embedding = nn.Sequential(resnet18, nn.Linear(512, rgb_embedding_dims))
+        if rgb_embedding_dims > 0:
+            resnet18 = torchvision.models.resnet18(pretrained=True)
+            resnet18.fc = nn.Identity()
+            resnet18.requires_grad_(False)
+            self.rgb_embedding = nn.Sequential(resnet18, nn.Linear(512, rgb_embedding_dims))
+        else:
+            self.rgb_embedding = None
         self.feature_extractor = nn.Sequential(*common_layers)
-        self.image_head = nn.Linear(in_features, model_output_image_size**2*3)
+        self.image_head = nn.Sequential(nn.Linear(in_features, model_output_image_size**2*3), nn.BatchNorm1d(model_output_image_size**2*3))
         self.mask_head = nn.Linear(in_features, model_output_image_size**2)
         self.box_head = nn.Linear(in_features, 4)
         self.model_output_image_size = model_output_image_size
         self.output_image_size = output_image_size
 
     def forward(self, z: torch.Tensor, normalized_rgb: torch.Tensor, rgb: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        rgb_embedded = self.rgb_embedding(normalized_rgb)
+        if self.rgb_embedding is not None:
+            rgb_embedded = self.rgb_embedding(normalized_rgb)
+        else:
+            rgb_embedded = torch.empty((normalized_rgb.shape[0], 0), device=normalized_rgb.device)
         features = self.feature_extractor(torch.concat([z, rgb_embedded], dim=1))
         mask_logits = self.mask_head(features).view(-1, self.model_output_image_size, self.model_output_image_size)
         image = self.image_head(features).view(-1, 3, self.model_output_image_size, self.model_output_image_size)

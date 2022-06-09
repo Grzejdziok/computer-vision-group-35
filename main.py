@@ -88,8 +88,8 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
             betas=betas,
         )
     elif model_name in [VAE_LOCAL_FC_32, VAE_LOCAL_FC_64]:
-        latent_dims = 1024
-        hidden_dims = 5 * [1024]
+        latent_dims = 512
+        hidden_dims = 5 * [512]
         model_image_size = 32 if model_name == VAE_LOCAL_FC_32 else 64
         lr = 1e-3
         betas = (0.9, 0.999)
@@ -103,6 +103,7 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
             model_output_image_size=model_image_size,
             output_image_size=dataset_statistics.image_size[0],
             hdim=hidden_dims,
+            rgb_embedding_dims=0,
         )
         preprocess_transform = torchvision.transforms.Normalize(
             mean=dataset_statistics.mean,

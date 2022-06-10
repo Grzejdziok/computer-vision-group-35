@@ -98,7 +98,8 @@ This is shown in the below diagram:
 </p>
 
 The advantage of this encoding is that it is more scalable and lets us vary generated object resolution independently of
-the image resolution. The disadvantage is that it 
+the image resolution. The disadvantage is that it is limited to applying only local changes in the image, so the changes
+of a wider context implied by adding a new object (like folding other items, changing shadows) cannot be learnt.
 
 ## 3. Algorithms
 

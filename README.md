@@ -104,6 +104,39 @@ the image resolution. The disadvantage is that it
 
 ### 3.1 VAE algorithm
 
+We implemented a simple fully connected VAE and ran it both with global and local encoding, only adjusting the loss 
+function in each case. The base network consists of two parts with constant depth <i>d</i> and width <i>w</i>:
+1. Encoder with <i>d</i> fully-connected layers with output dimensionality of <i>w</i> followed by ReLU activations. The
+inputs to the encoder are flattened and concatenated. The outputs of the encoder are fed into two heads which are single 
+fully-connected layers with output dimensionality of <i>w</i> - one predicting mean of a multivariate Gaussian and the 
+other predicting variances in all dimensions assuming independence of dimensions. The output of variance head is passed 
+through exponential activation to ensure that the variances are positive. 
+2. Decoder with <i>d</i> fully-connected layers with output dimensionality of <i>w</i> followed by ReLU activations. The 
+input to the decoder is noise of dimensionality <i>w</i> sampled from encoder outputs during training and from N(0, 1) 
+during inference. The outputs of the decoder are fed to output heads one for each of the outputs as described in 
+sections 2.1 and 2.2. Each of the heads consists of a single fully-connected layer with output dimensionality as 
+specified for its output.
+
+For each of the setup wee train VAE with AdamW optimizer with constant learning rate 1e-3, betas 0.9 and 0.999, and 
+weight decay 1e-5 for 30 000 gradient steps with batch size 100. We preprocess inputs to the model by resizing them to 
+64x64 and fix the output dimensionality of the decoder to be the same. After inference, we resize the outputs to fit the 
+original size of the image. During training we augment images by applying random horizontal and vertical flip. The loss 
+function is different for each of the encodings. For the global encoding, we add up 4 components: 1) binary cross 
+entropy between global mask predictions and global mask targets, multiplied by 10. to account for differences in scale 
+in relation to other components, 2) DKL loss between the distributions produced by the encoder and N(0,1), 3) mean 
+squared error loss between the predicted global rgb with object and target global rgb with object, 4) mean squared loss 
+between the predicted object rgb crop and target object rgb crop. For the local encoding, we again add up 4 components: 1) 
+binary cross entropy between local mask predictions and local mask targets, 2) DKL loss between the distributions 
+produced by the encoder and N(0,1), 3) mean squared error between local object rgb predictions and local object rgb 
+targets, 4) smooth l1 error between box location predictions and box location targets. For both cases
+
+For all experiments we fix <i>w</i>=512 and <i>d</i>=5. With this as a baseline, we also experiment with 1) adding 
+BatchNorm after each hidden linear layer, 2) adding Dropout after each BatchNorm layer. We find that adding both 
+BatchNorm and Dropout is beneficial to make model overfit less. Another experiment we perform is to concatenate an 
+embedding of the input image to decoder inputs, but we find it makes the model overfit to training images and produce 
+for test images either no meaningful objects or the exact same objects as for similar training images. We give more 
+details of these experiments in section 4.
+
 ### 3.2 GAN algorithm
 
 Two versions of GAN were attempted: convolutional and fully-connected. Based off the success of VAE, the fully-connected 

@@ -62,7 +62,7 @@ to learn to generate large amount of pixels that are irrelevant for addition of 
 to achieve a good resolution of a generated item, the model has to compute-intensive because it has to generate the 
 whole image in this resolution, not only the item.
 
-### 2.1 Local view encoding
+### 2.2 Local view encoding
 
 The local view encoding is designed to be less compute-intensive than the global view encoding. It uses the fact that
 the most pixels of the image is irrelevant for adding a new item and it may be enough to generate only the pixels of

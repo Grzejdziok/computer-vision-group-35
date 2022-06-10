@@ -104,7 +104,7 @@ class DecoderLocalFullyConnected(DecoderLocal):
         else:
             self.rgb_embedding = None
         self.feature_extractor = nn.Sequential(*common_layers)
-        self.image_head = nn.Sequential(nn.Linear(in_features, model_output_image_size**2*3), nn.BatchNorm1d(model_output_image_size**2*3))
+        self.image_head = nn.Linear(in_features, model_output_image_size**2*3)
         self.mask_head = nn.Linear(in_features, model_output_image_size**2)
         self.box_head = nn.Linear(in_features, 4)
         self.model_output_image_size = model_output_image_size

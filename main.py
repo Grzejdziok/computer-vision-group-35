@@ -54,13 +54,13 @@ def get_data_generator(dataset_type: str) -> DataGenerator:
         raise ValueError(f"Unknown type {dataset_type}")
 
 
-def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl.LightningModule:
+def get_model(model_name: str, datamodule: SingleItemGenerationDataModule, width: int) -> pl.LightningModule:
 
     dataset_statistics = datamodule.statistics
 
     if model_name in [VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64]:
-        latent_dims = 256
-        hidden_dims = 5 * [1024]
+        latent_dims = width
+        hidden_dims = 5 * [width]
         model_image_size = 32 if model_name == VAE_GLOBAL_FC_32 else 64
         lr = 1e-3
         betas = (0.5, 0.999)  # coefficients used for computing running averages of gradient and its square for Adam - from GauGAN paper
@@ -88,8 +88,8 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
             betas=betas,
         )
     elif model_name in [VAE_LOCAL_FC_32, VAE_LOCAL_FC_64]:
-        latent_dims = 512
-        hidden_dims = 5 * [512]
+        latent_dims = width
+        hidden_dims = 5 * [width]
         model_image_size = 32 if model_name == VAE_LOCAL_FC_32 else 64
         lr = 1e-3
         betas = (0.9, 0.999)
@@ -161,6 +161,7 @@ def get_model(model_name: str, datamodule: SingleItemGenerationDataModule) -> pl
 def main(model_name: str,
          dataset_type: str,
          batch_size: int,
+         width: int,
          max_steps: Optional[int],
          load_weights_from: Optional[str],
          predict_only: bool,
@@ -171,7 +172,7 @@ def main(model_name: str,
     data_generator = get_data_generator(dataset_type=dataset_type)
     datamodule = SingleItemGenerationDataModule(data_generator=data_generator, batch_size=batch_size, test_ratio=test_ratio)
     datamodule.prepare_data()
-    model = get_model(model_name=model_name, datamodule=datamodule)
+    model = get_model(model_name=model_name, datamodule=datamodule, width=width)
 
     if load_weights_from is not None:
         model = torch.load(load_weights_from)
@@ -243,13 +244,14 @@ if __name__ == "__main__":
     # python main.py --model-name gan_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 30 --max-steps 10000
     # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 10 --load-weights-from vae_fc.pt --predict-only
     #
-    # survey usage: python main.py --model-name vae_local_fc_64 --dataset-type all_boxes_in_flat_256 --batch-size 100 --max-steps 20000
+    # survey usage: python main.py --model-name vae_local_fc_64 --dataset-type all_boxes_in_flat_256 --batch-size 100 --max-steps 30000 --width 512 --generate-survey-images
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", choices=[VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64, VAE_LOCAL_FC_32, VAE_LOCAL_FC_64, VAE_LOCAL_CONV_4x, GAN_FC], required=True)
     parser.add_argument("--dataset-type", choices=[SINGLE_ITEM_BOXES_IN_FLAT_32, SINGLE_ITEM_BOXES_IN_FLAT_128, SINGLE_ITEM_BOXES_IN_FLAT_256, ALL_BOXES_IN_FLAT_32, ALL_BOXES_IN_FLAT_256], required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--max-steps", type=int, default=None)
+    parser.add_argument("--width", type=int, default=512)
     parser.add_argument("--load-weights-from", required=False, default=None)
     parser.add_argument("--predict-only", action="store_true", default=False)
     parser.add_argument("--generate-survey-images", action="store_true", default=False)
@@ -263,5 +265,6 @@ if __name__ == "__main__":
          batch_size=args.batch_size,
          max_steps=args.max_steps,
          test_ratio=args.test_ratio,
+         width=args.width,
          generate_survey_images=args.generate_survey_images,
          )

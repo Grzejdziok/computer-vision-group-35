@@ -226,6 +226,32 @@ same time, which is extremely unlikely. The generator is thus stuck in a local m
 the loss even larger. 
 
 ## 6. Survey for VAE
+Having worked with the dataset for a couple of weeks, we, the authors, are able to differentiate easily between real and fake samples. Such skill, though, was developed due to the level of exposure to the datasets and drawing any conclusions this way would introduce innate biases. Instead, we opted to conduct a survey using Google Forms to obtain qualitative results on the performance of VAE.
+
+Participants were presented with 50 images: 25 ground truths and 25 fakes, generated through VAE. The task was to identify whether each individual image was real or fake. The real images were chosen completely randomly from the dataset we collected. The fake ones were hand-picked by the authors. We picked 25 images that we deemed best out of 100 images that we generated. Thus, the fake samples fall approximately within the 75th percentile of all generated images, though of course it is a subjective metric.
+
+We had a possibility to conduct this search of the best generated imagesmore thorougly, but opted against it to avoid misrepresenting the efficiency of the generator. The responses were taken anonymously. There were in total 21 participants, each answered all 50 questions. The results of the survey can be found in Figure 5. 
+
+<figure>
+<img src="images/survey_results.png" style="width:100%" alt="Local GAN results">
+<figcaption align = "center"><b>Fig. 5 - Survey results</b></figcaption>
+</figure>
+
+Interestingly, the range of the results is quite large. Indeed, the survey was distributed among a sample of people who do not represent the general population. The majority of participants had some experience with machine learning algorithms, whether working for a robotics company or studying at TU Delft. This population of participants may focus more on implicit hints such as changes in resolution, which does not represent objective discrimination between images.
+
+In general, we are happy with the results given the timeframe we had available. Some images received a suprisingly low accuracy score - for instance those shown on Figure 6. All three images are fake, though we looked at badly-performing fake and real images alike. From left to right, the images below received 5, 9 and 12 correct responces among 21 participants.
+
+<p align="middle">
+<img src="images/5_correct.png" style="width:30%" alt="5/21 correct responses"> 
+<img src="images/9_correct.png" style="width:30%" alt="9/21 correct responses">
+<img src="images/12_correct.png" style="width:30%" alt="12/21 correct responses">
+<br>
+<b>Fig. 6 - Tricky images</b>
+</p>
+
+Another aspect affecting qualitative performance is the dimensionality of the images. Typically image classification datasets contain images which have a resolution multiple times lower that what we include in the questionnaire. For instance CIFAR10, arguably the most used dataset to date for image classification, contains 32x32 pixel images - 64 times smaller than what we produce. Most other datasets of similar purpose contain similarly sized images. ImageNet is known to have some of the largest images - 469x387 pixels, which is comparable to what we offer. There is some debate though, as to whether training models on images of such size is truly beneficial to research in the machine learning community. Greydanus (2020) argues that larger datasets are less interpretable, less sustainable and, despite a larger commercial gain, contribute to less of 'true knowledge gain'.
+
+We can only speculate on the results of the questionnaire, had we rescaled the images to half the size, let alone the size of CIFAR10 images. Figure 6 shows that that the easiest way to determine if an image is fake is to look at resolution around fake objects. If we decrease the resolution of the image altogether, such hints would be unavailable and it would be much more difficult to discriminate.
 
 ## 7. Future directions
 With this we conclude our implementation of the data augmentation tool. Based on the limitation of the current work, we 
@@ -247,3 +273,5 @@ Finally, the issues with a convolutional encoder and a convolutional decoder sho
 <a id="1">[1]</a> Musgrave, K., Belongie, S., &amp; Lim, S.-N. (2020). A metric learning reality check. Computer Vision – ECCV 2020, 681–699.  [https://doi.org/10.1007/978-3-030-58595-2_41]()
 
 <a id="2">[2]</a> Goodfellow, I., Pouget-Abadie, J., Mirza, M., Xu, B., Warde-Farley, D., Ozair, S., Courville, A., &amp; Bengio, Y. (2020). Generative Adversarial Networks. Communications of the ACM, 63(11), 139–144. [https://doi.org/10.1145/3422622]()
+
+<a id="3">[3]</a> Greydanus, S. (2020). Scaling down Deep Learning. [https://doi:10.48550/ARXIV.2011.14439]()

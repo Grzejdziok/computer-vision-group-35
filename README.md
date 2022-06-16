@@ -2,6 +2,7 @@
 
 # Deep-learning methods for dataset augmentation
 **Authors:** Michał Grzejdziak (5266440), Sviatoslav Voloshyn (4774361)
+
 ***
 
 ## 1. Introduction
@@ -62,8 +63,8 @@ expanding the dataset. A generative adversarial network (GAN) and a variational 
 follows we present and discuss each model and the results. In section 2. we describe the two ways which were adopted to 
 encode the task as inputs and outputs to the model In section 3. we introduce our implementation of each of the two 
 models with respect to the specifics of the task at hand. In Section 4. and Section 5. we present the results 
-respectively for VAE and GAN. Afterwards, Section 6. will present the results of the AMT-type of experiment and Section 
-7. will conclude the README with the potential future directions.
+respectively for VAE and GAN. Afterwards, Section 6. will present the results of the AMT-type of experiment and 
+Section 7. will conclude the README with the potential future directions.
 
 ## 2. Input-output encoding
 
@@ -131,7 +132,7 @@ binary cross entropy between local mask predictions and local mask targets, 2) D
 produced by the encoder and N(0,1), 3) mean squared error between local object rgb predictions and local object rgb 
 targets, 4) smooth l1 error between box location predictions and box location targets. For both cases
 
-For all experiments we fix <i>w</i>=512 and <i>d</i>=5. With this as a baseline, we also experiment with 1) adding 
+For all experiments we fix <i>w</i>=1024 and <i>d</i>=5. With this as a baseline, we also experiment with 1) adding 
 BatchNorm after each hidden linear layer, 2) adding Dropout after each BatchNorm layer. We find that adding both 
 BatchNorm and Dropout is beneficial to make model overfit less. Another experiment we perform is to concatenate an 
 embedding of the input image to decoder inputs, but we find it makes the model overfit to training images and produce 

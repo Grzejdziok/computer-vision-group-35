@@ -216,7 +216,6 @@ def main(model_name: str,
 
     plt.savefig("visualizations.png")
     plt.show()
-
     if generate_survey_images:
         directory = "survey_images"
         if os.path.exists(directory):
@@ -244,7 +243,7 @@ if __name__ == "__main__":
     # python main.py --model-name gan_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 30 --max-steps 10000
     # python main.py --model-name vae_fc --dataset-type single_item_boxes_in_flat_32 --batch-size 10 --load-weights-from vae_fc.pt --predict-only
     #
-    # survey usage: python main.py --model-name vae_local_fc_64 --dataset-type all_boxes_in_flat_256 --batch-size 100 --max-steps 30000 --width 512 --generate-survey-images
+    # survey usage: python main.py --model-name vae_local_fc_64 --dataset-type all_boxes_in_flat_256 --batch-size 100 --max-steps 30000 --width 1024 --generate-survey-images
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", choices=[VAE_GLOBAL_FC_32, VAE_GLOBAL_FC_64, VAE_LOCAL_FC_32, VAE_LOCAL_FC_64, VAE_LOCAL_CONV_4x, GAN_FC], required=True)

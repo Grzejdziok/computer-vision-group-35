@@ -268,11 +268,22 @@ constraint on the minimal size of the initial bounding box. If this fails, one c
 the VAE decoder model as the starting point for GAN generator. This approach has a lot of potential as we have shown a 
 number of conceptual similarities between GAN and VAE. 
 
-Finally, the issues with a convolutional encoder and a convolutional decoder should be resolved.
+Finally, we could replace fully-connected layers with convolutional layers in VAE, thus hopefully making the model 
+generalize better for image data and be more parameter-efficient. Our initial attempts to do it did not work out of the
+box, but we did not perform an extensive study of hyperparameters. In particular, in our attempts we did not use any
+normalization layers, while either BatchNorm [[4]](#4) or Spatially-Adaptive Normalization [[5]](#5) could make it work.
 
 ## References
 <a id="1">[1]</a> Musgrave, K., Belongie, S., &amp; Lim, S.-N. (2020). A metric learning reality check. Computer Vision – ECCV 2020, 681–699.  [https://doi.org/10.1007/978-3-030-58595-2_41]()
 
 <a id="2">[2]</a> Goodfellow, I., Pouget-Abadie, J., Mirza, M., Xu, B., Warde-Farley, D., Ozair, S., Courville, A., &amp; Bengio, Y. (2020). Generative Adversarial Networks. Communications of the ACM, 63(11), 139–144. [https://doi.org/10.1145/3422622]()
 
-<a id="3">[3]</a> Greydanus, S. (2020). Scaling down Deep Learning. [https://doi:10.48550/ARXIV.2011.14439]()
+<a id="3">[3]</a> Greydanus, S. (2020). Scaling down Deep Learning. [https://doi.org/10.48550/ARXIV.2011.14439]()
+
+<a id="4">[4]</a> Ioffe, S., & Szegedy, C. (2015). Batch Normalization: Accelerating Deep Network Training by Reducing 
+Internal Covariate Shift. In: F. Bach & D. Blei (Eds.), <i>Proceedings of the 32nd International Conference on Machine 
+Learning</i> (Vol. 37, pp. 448–456). PMLR. [https://proceedings.mlr.press/v37/ioffe15.html]()
+
+<a id="5">[5]</a> T. Park, M.-Y. Liu, T.-C. Wang & J.-Y. Zhu (2019). Semantic Image Synthesis With Spatially-Adaptive 
+Normalization. In: <i>2019 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) </i>. pp. 2332-2341. 
+[https://doi.org/10.1109/CVPR.2019.00244]()

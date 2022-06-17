@@ -338,18 +338,14 @@ resolution around fake objects. If we decrease the resolution of the image altog
 and it would be much more difficult to discriminate.
 
 ## 7. Future directions
-With this we conclude our implementation of the data augmentation tool. Based on the limitation of the current work, we 
-propose a number of future research directions. 
+With this we conclude our implementation of the data augmentation tool. Based on the limitation of the current work, we propose a number of future research directions. 
 
 First of all, the results of this implementation should be linked with the initial research question of augmenting 
-existing datasets. Augmentation includes both a quantitative and a qualitative component, and the latter was not yet 
-tested. A potential test given the type of dataset used could be to train a MaskRCNN model on generated data and compare 
-the performance with an identical model trained exclusively on the 650 data samples we had collected. 
+existing datasets. Augmentation includes both a quantitative and a qualitative component, and the latter was not yet tested. A potential test given the type of dataset used could be to train a MaskRCNN model on generated data and compare the performance with an identical model trained exclusively on the 650 data samples we had collected. 
 
 Another research direction is to improve the performance of the GAN implementation. One idea is to place a further 
 constraint on the minimal size of the initial bounding box. If this fails, one could perform transfer learning to use 
-the VAE decoder model as the starting point for GAN generator. This approach has a lot of potential as we have shown a 
-number of conceptual similarities between GAN and VAE. 
+the VAE decoder model as the starting point for GAN generator. This approach has a lot of potential as we have shown a number of conceptual similarities between GAN and VAE. Another possibility would be too look into training the generator and the discriminator at different rates, which is usually done when one overpowers the other. In this case the generator would be trained more often as we identified underperformance of the generator as the key failure mode for GAN.
 
 Finally, we could replace fully-connected layers with convolutional layers in VAE, thus hopefully making the model 
 generalize better for image data and be more parameter-efficient. Our initial attempts to do it did not work out of the

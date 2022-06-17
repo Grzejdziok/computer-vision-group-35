@@ -119,7 +119,7 @@ during inference. The outputs of the decoder are fed to output heads one for eac
 sections 2.1 and 2.2. Each of the heads consists of a single fully-connected layer with output dimensionality as 
 specified for its output.
 
-For each of the setup wee train VAE with AdamW optimizer with constant learning rate 1e-3, betas 0.9 and 0.999, and 
+For each of the setup we train VAE with AdamW optimizer with constant learning rate 1e-3, betas 0.9 and 0.999, and 
 weight decay 1e-5 for 30 000 gradient steps with batch size 100. We preprocess inputs to the model by resizing them to 
 64x64 and fix the output dimensionality of the decoder to be the same. After inference, we resize the outputs to fit the 
 original size of the image. During training we augment images by applying random horizontal and vertical flip. The loss 
@@ -161,13 +161,69 @@ masks and the zoomed in rgb image by performing multi-head operations on the con
 The loss function in all cases was the classical binary cross-entropy loss between the batch discriminator output and 
 the ground truth vector. 
 
-## 4. VAE results
+## 4. VAE experiments
 
-### 4.1. Visualization
+For VAE, we iterated first on training a model with global view encoding for images resized to a very small size of 
+32x32 and after successful attempts we tried increasing the input size (and effectively model prediction resolution).
+The final input size we managed to train with good effects was input object size of 64x64 when trained with local input
+encoding which roughly corresponds to input image size of 256x256 for medium objects. In the analysis here, we entirely
+focus on this setup. In section 4.1, we perform an ablation study to evaluate three potential architectural 
+improvements: 1) batchnorm1d, 2) dropout, 3) adding input image embedding.
 
-### 4.2. Ablation study
+### 4.1. Ablation study
 
-## 5. GAN results
+For the ablation study, we train the model with local input encoding following the setup described in section 3.1. We 
+split the dataset of 650 images to a training set containing 573 images and a validation set containing 77 images. We 
+perform experiments for 1) baseline, 2) baseline with BatchNorm1d before each ReLU activation, 3) baseline with 
+BatchNorm1d before each ReLU activation and Dropout with probability of 0.1 after each BatchNorm1d in the decoder. 
+We train the model for 5000 gradient steps (which we found sufficient for the model to start overfitting) and report 
+average training and validation loss for each of the setups across 5 random seeds. The validation loss is a proxy for 
+how well the trained model can represent an object from outside the training set in its latent space, from which we draw 
+samples during inference. The lower the validation loss, the wider and more diverse the range of objects and positions 
+can be drawn from the latent space. With the limited dataset of ours, we do not expect the model to generalize well 
+outside the training set, but still we prefer the model which can fit the training data while having as low validation 
+loss as possible, as it means that it can better represent at least the most high-level features of objects like shape, 
+size or dominating color.
+
+The results of the ablation study are given in Table 1. From the table we can see that the baseline is clearly the worst
+both in terms of fitting to the training set and generalizing to the validation set. On the other hand, adding 
+BatchNorm1d helps in both these respects, and adding Dropout(p=0.1) to decoder layers give a slight improvement in
+terms of preventing overfitting, but makes it harder to fit to the training set.
+
+For the rest of this blog post, we use the version of VAE with BatchNorm1d and decoder Dropout(p=0.1), training with
+the full setting as described in section 3.1.
+
+***
+
+| Results after 5000 steps across 5 random seeds | average training loss | average validation loss |
+|------------------------------------------------|-----------------------|-------------------------|
+| 1) baseline                                    | 0.61 (±0.09)          | 0.81 (±0.05)            |
+| 2) baseline+BatchNorm1d                        | 0.30 (±0.02)          | 0.64 (±0.03)            |
+| 3) baseline+BatchNorm1d+decoder Dropout(p=0.1) | 0.43 (±0.02)          | 0.61 (±0.02)            |
+
+<b>Table 1 - ablation study results for VAE with local encoding</b>
+
+***
+
+### 4.2. Visualization
+
+We visualize some images generated with the local input encoding VAE with BatchNorm1d and decoder Dropout(p=0.1) as 
+described in the previous section. The model presented here was trained for 30 000 gradient steps as described in 
+the section 3.1. We can see that the model is able to generate objects which resemble specific items, but we must note
+that they are not photorealistic and their quality is usually quite poor - some of generated items are heavily blurred,
+some have weird dimensions. Nonetheless, there is still room for improving the method which we cover in more detail in
+section 7.
+
+<p align="middle">
+<img src="images/vae_example_1.png" style="width:23%" alt="VAE example 1">
+<img src="images/vae_example_2.png" style="width:23%" alt="VAE example 2">
+<img src="images/vae_example_3.png" style="width:23%" alt="VAE example 3">
+<img src="images/vae_example_4.png" style="width:23%" alt="VAE example 4">
+<br>
+<b>Fig. 4 - example images with objects predicted by VAE with local encoding</b>
+</p>
+
+## 5. GAN experiments
 Unlike VAE, GAN was not found effective at generating additional data. The difference between the current application 
 and typical use cases for GAN is that the RGB image of the box must form the background of the generated image. This 
 section will explain the failure causes of both a local and a global implementation of GAN.
@@ -187,7 +243,7 @@ distribution.
 
 <figure>
 <img src="images/global-gan.jpg" style="width:100%" alt="Trends in metric learning">
-<figcaption align = "center"><b>Fig. 3 - Global GAN prediction</b></figcaption>
+<figcaption align = "center"><b>Fig. 5 - Global GAN prediction</b></figcaption>
 </figure>
 
 ### 5.2. Local GAN
@@ -199,7 +255,7 @@ corners.
 
 <figure>
 <img src="images/local-gan.jpg" style="width:100%" alt="Local GAN results">
-<figcaption align = "center"><b>Fig. 4 - Local GAN results</b></figcaption>
+<figcaption align = "center"><b>Fig. 6 - Local GAN results</b></figcaption>
 </figure>
 
 This happens because at the beginning the bounding box is filled with randomly initialized RGB values. Because the 
@@ -212,7 +268,7 @@ bounding box for the object, the generator finds it easier to simply make the bo
 look similar to an empty box.
 
 Because the real objects typically take up only a small portion of the box, the discriminator can be easily fooled, 
-especially during the early training cycles, by quering an empty box as a fake sample. 
+especially during the early training cycles, by querying an empty box as a fake sample. 
 
 After only a few training batches, the GAN converges to a point where the generator outputs empty boxes and the 
 generator is learning to discriminate. Some time later, the discriminator learns to identify empty boxes as fake 
@@ -227,32 +283,59 @@ same time, which is extremely unlikely. The generator is thus stuck in a local m
 the loss even larger. 
 
 ## 6. Survey for VAE
-Having worked with the dataset for a couple of weeks, we, the authors, are able to differentiate easily between real and fake samples. Such skill, though, was developed due to the level of exposure to the datasets and drawing any conclusions this way would introduce innate biases. Instead, we opted to conduct a survey using Google Forms to obtain qualitative results on the performance of VAE.
+Having worked with the dataset for a couple of weeks, we, the authors, are able to differentiate easily between real and 
+fake samples. Such skill, though, was developed due to the level of exposure to the datasets and drawing any conclusions 
+this way would introduce innate biases. Instead, we opted to conduct a survey using Google Forms to obtain qualitative 
+results on the performance of VAE.
 
-Participants were presented with 50 images: 25 ground truths and 25 fakes, generated through VAE. The task was to identify whether each individual image was real or fake. The real images were chosen completely randomly from the dataset we collected. The fake ones were hand-picked by the authors. We picked 25 images that we deemed best out of 100 images that we generated. Thus, the fake samples fall approximately within the 75th percentile of all generated images, though of course it is a subjective metric.
+Participants were presented with 50 images: 25 ground truths and 25 fakes, generated through the VAE algorithm with 
+local input encoding following the setup described in section 3.1 with BatchNorm1d before each ReLU activation and 
+Dropout with probability of 0.1 after BatchNorm1d in decoder layers. The task was to identify whether each individual 
+image was real or fake. The real images were chosen completely randomly from the dataset we collected. The fake ones 
+were hand-picked by the authors. We picked 25 images that we deemed best out of 100 images that we generated. Thus, the 
+fake samples fall approximately within the 75th percentile of all generated images, though of course it is a subjective 
+metric.
 
-We had a possibility to conduct this search of the best generated imagesmore thorougly, but opted against it to avoid misrepresenting the efficiency of the generator. The responses were taken anonymously. There were in total 21 participants, each answered all 50 questions. The results of the survey can be found in Figure 5. 
+We had a possibility to conduct this search of the best generated imagesmore thorougly, but opted against it to avoid 
+misrepresenting the efficiency of the generator. The responses were taken anonymously. There were in total 21 
+participants, each answered all 50 questions. The results of the survey can be found in Figure 7. 
 
 <figure>
 <img src="images/survey_results.png" style="width:100%" alt="Local GAN results">
-<figcaption align = "center"><b>Fig. 5 - Survey results</b></figcaption>
+<figcaption align = "center"><b>Fig. 7 - Survey results</b></figcaption>
 </figure>
 
-Interestingly, the range of the results is quite large. Indeed, the survey was distributed among a sample of people who do not represent the general population. The majority of participants had some experience with machine learning algorithms, whether working for a robotics company or studying at TU Delft. This population of participants may focus more on implicit hints such as changes in resolution, which does not represent objective discrimination between images.
+Interestingly, the range of the results is quite large. Indeed, the survey was distributed among a sample of people who 
+do not represent the general population. The majority of participants had some experience with machine learning 
+algorithms, whether working for a robotics company or studying at TU Delft. This population of participants may focus 
+more on implicit hints such as changes in resolution, which does not represent objective discrimination between images.
 
-In general, we are happy with the results given the timeframe we had available. Some images received a suprisingly low accuracy score - for instance those shown on Figure 6. All three images are fake, though we looked at badly-performing fake and real images alike. From left to right, the images below received 5, 9 and 12 correct responces among 21 participants.
+In general, we are happy with the results given the timeframe we had available. Some images received a suprisingly low 
+accuracy score - for instance those shown on Figure 8. All three images are fake, though we looked at badly-performing 
+fake and real images alike. From left to right, the images below received 5, 9 and 12 correct responces among 21 
+participants.
 
 <p align="middle">
 <img src="images/5_correct.png" style="width:30%" alt="5/21 correct responses"> 
 <img src="images/9_correct.png" style="width:30%" alt="9/21 correct responses">
 <img src="images/12_correct.png" style="width:30%" alt="12/21 correct responses">
 <br>
-<b>Fig. 6 - Tricky images</b>
+<b>Fig. 8 - Tricky images</b>
 </p>
 
-Another aspect affecting qualitative performance is the dimensionality of the images. Typically image classification datasets contain images which have a resolution multiple times lower that what we include in the questionnaire. For instance CIFAR10, arguably the most used dataset to date for image classification, contains 32x32 pixel images - 64 times smaller than what we produce. Most other datasets of similar purpose contain similarly sized images. ImageNet is known to have some of the largest images - 469x387 pixels, which is comparable to what we offer. There is some debate though, as to whether training models on images of such size is truly beneficial to research in the machine learning community. Greydanus (2020) argues that larger datasets are less interpretable, less sustainable and, despite a larger commercial gain, contribute to less of 'true knowledge gain'.
+Another aspect affecting qualitative performance is the dimensionality of the images. Typically image classification 
+datasets contain images which have a resolution multiple times lower that what we include in the questionnaire. For 
+instance CIFAR10, arguably the most used dataset to date for image classification, contains 32x32 pixel images - 64 
+times smaller than what we produce. Most other datasets of similar purpose contain similarly sized images. ImageNet is 
+known to have some of the largest images - 469x387 pixels, which is comparable to what we offer. There is some debate 
+though, as to whether training models on images of such size is truly beneficial to research in the machine learning 
+community. Greydanus (2020) argues that larger datasets are less interpretable, less sustainable and, despite a larger 
+commercial gain, contribute to less of 'true knowledge gain'.
 
-We can only speculate on the results of the questionnaire, had we rescaled the images to half the size, let alone the size of CIFAR10 images. Figure 6 shows that that the easiest way to determine if an image is fake is to look at resolution around fake objects. If we decrease the resolution of the image altogether, such hints would be unavailable and it would be much more difficult to discriminate.
+We can only speculate on the results of the questionnaire, had we rescaled the images to half the size, let alone the 
+size of CIFAR10 images. Figure 6 shows that that the easiest way to determine if an image is fake is to look at 
+resolution around fake objects. If we decrease the resolution of the image altogether, such hints would be unavailable 
+and it would be much more difficult to discriminate.
 
 ## 7. Future directions
 With this we conclude our implementation of the data augmentation tool. Based on the limitation of the current work, we 
